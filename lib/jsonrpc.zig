@@ -71,6 +71,7 @@ pub const Client = struct {
 
         try c.send(body, &buffer);
         const response = try buffer.toOwnedSlice();
+        defer c.allocator.free(response);
 
         const parsed = try json.parseFromSlice(GetBlockNumberResponse, c.allocator, response, .{ .ignore_unknown_fields = true });
         defer parsed.deinit();

@@ -19,7 +19,7 @@ pub fn main() !void {
 
     const block_number = try jsonrpcClient.getBlockNumber();
 
-    std.debug.print("Got block number {}", .{block_number});
+    std.debug.print("Got block number {d}\n", .{block_number});
 }
 
 test "zpool lib import" {
