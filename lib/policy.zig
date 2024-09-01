@@ -4,7 +4,7 @@ const testing = std.testing;
 
 const BlockType = @import("block.zig").BlockType;
 
-pub const genesis_number = 0;
+pub const genesis_number = 3032010;
 pub const batch_size = 60;
 pub const epoch_size = 43200;
 pub const batches_per_epoch = 720;
@@ -15,6 +15,10 @@ pub fn getBlockNumberForBatch(batch_number: u64) u64 {
 
 pub fn getBlockNumberForEpoch(epoch_number: u64) u64 {
     return epoch_number * epoch_size + genesis_number;
+}
+
+pub fn getBatchFromBlockNumber(block_number: u64) u64 {
+    return calculateSizeForBlock(block_number, batch_size);
 }
 
 pub fn getEpochFromBatchNumber(batch_number: u64) u64 {
@@ -41,11 +45,11 @@ pub fn getBlockTypeByBlockNumber(block_number: u64) BlockType {
 }
 
 test "block number for batch number" {
-    try testing.expect(getBlockNumberForBatch(2) == 120);
+    try testing.expect(getBlockNumberForBatch(2) == 120 + genesis_number);
 }
 
 test "block number for epoch number" {
-    try testing.expect(getBlockNumberForEpoch(1) == 43200);
+    try testing.expect(getBlockNumberForEpoch(1) == 43200 + genesis_number);
 }
 
 test "get epoch from batch number" {
