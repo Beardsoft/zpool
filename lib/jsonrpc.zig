@@ -6,13 +6,6 @@ const testing = std.testing;
 const Allocator = std.mem.Allocator;
 const Uri = std.Uri;
 
-const ResponseError = struct {
-    code: i32,
-    message: []u8,
-    // we omit data field for now
-    // data: []u8,
-};
-
 pub const Error = error{
     ParseError,
     InvalidRequest,
@@ -21,66 +14,116 @@ pub const Error = error{
     InternalError,
     ServerError,
     UnknownError,
+    UnexpectedHttpStatus,
 };
 
+/// Create a new JSON-RPC request type
+/// that can instantiate the desired request
+/// with the right parameter typing
+pub fn Request(comptime T: type) type {
+    return struct {
+        const Self = @This();
+
+        jsonrpc: []const u8 = "2.0",
+        id: u64 = 1,
+        method: []const u8,
+        params: T = undefined,
+
+        pub fn marshalJSON(self: *Self, allocator: Allocator) ![]u8 {
+            return json.stringifyAlloc(allocator, self, .{});
+        }
+    };
+}
+
+/// Create a new JSON-RPC response type
+/// that can instantiate the desired respone
+/// with the right result typing
+pub fn Response(comptime T: type) type {
+    return struct {
+        const Self = @This();
+
+        result: struct { data: T, metadata: ?struct {
+            blockNumber: u64,
+            blockHash: []const u8,
+        } = null },
+        @"error": ?ResponseError = null,
+    };
+}
+
+const ResponseError = struct {
+    code: i32,
+    message: []u8,
+    // we omit data field for now
+    // data: []u8,
+};
+
+/// Exposes JSON-RPC client for the Nimiq blockchain
+/// provides generic functionality to send any request
+/// and specific method implementations for commonly used
+/// functionality
 pub const Client = struct {
+    const Self = @This();
+
     // TODO: in case of auth we have to handle bearer token based of username and password
     allocator: Allocator,
     client: *http.Client,
     uri: Uri,
 
-    pub fn send(c: *Client, body: []u8, dest: *std.ArrayList(u8)) !void {
+    /// `getBlockNumber` returns the current block height of the chain
+    pub fn getBlockNumber(self: *Self) !u64 {
+        const ReqType = Request([]bool);
+        var req = ReqType{ .method = "getBlockNumber" };
+
+        const ResponseType = Response(u64);
+
+        const parsed = try self.send(&req, ResponseType);
+        defer parsed.deinit();
+
+        return parsed.value.result.data;
+    }
+
+    /// send a raw JSON-RPC request, returns the decoded JSON-RPC response
+    pub fn send(self: *Self, req: anytype, comptime ResponseType: type) !json.Parsed(ResponseType) {
         const headers = std.http.Client.Request.Headers{
             .content_type = std.http.Client.Request.Headers.Value{
                 .override = "application/json",
             },
         };
 
-        const server_header_buffer: []u8 = try c.allocator.alloc(u8, 8 * 1024 * 4);
+        const server_header_buffer: []u8 = try self.allocator.alloc(u8, 2048);
+        defer self.allocator.free(server_header_buffer);
 
-        var http_req = try c.client.open(.POST, c.uri, std.http.Client.RequestOptions{
+        var http_req = try self.client.open(.POST, self.uri, std.http.Client.RequestOptions{
             .server_header_buffer = server_header_buffer,
             .headers = headers,
         });
         defer http_req.deinit();
-        defer c.allocator.free(server_header_buffer);
 
+        const body = try req.marshalJSON(self.allocator);
+        defer self.allocator.free(body);
         http_req.transfer_encoding = .{ .content_length = body.len };
 
         try http_req.send();
         _ = try http_req.writeAll(body);
         try http_req.finish();
         try http_req.wait();
-        try http_req.reader().readAllArrayList(dest, 1024);
-    }
 
-    const GetBlockNumberResponse = struct {
-        result: struct { data: u64 },
-        @"error": ?ResponseError = null,
-    };
+        if (http_req.response.status != http.Status.ok) {
+            return Error.UnexpectedHttpStatus;
+        }
 
-    pub fn getBlockNumber(c: *Client) !u64 {
-        const payload = "{\"jsonrpc\":\"2.0\",\"method\":\"getBlockNumber\",\"id\":1,\"params\":[]}";
+        var dest = std.ArrayList(u8).init(self.allocator);
+        defer dest.deinit();
 
-        const body = try c.allocator.alloc(u8, 62);
-        defer c.allocator.free(body);
-        @memcpy(body, payload);
+        const response_size = http_req.response.content_length orelse 1024;
+        try http_req.reader().readAllArrayList(&dest, @as(usize, response_size));
 
-        var buffer = std.ArrayList(u8).init(c.allocator);
-        defer buffer.deinit();
-
-        try c.send(body, &buffer);
-        const response = try buffer.toOwnedSlice();
-        defer c.allocator.free(response);
-
-        const parsed = try json.parseFromSlice(GetBlockNumberResponse, c.allocator, response, .{ .ignore_unknown_fields = true });
-        defer parsed.deinit();
-
+        const parsed = try json.parseFromSlice(ResponseType, self.allocator, dest.allocatedSlice(), .{ .ignore_unknown_fields = true });
         if (parsed.value.@"error") |err| {
             return parseJsonRpcError(err);
         }
 
-        return parsed.value.result.data;
+        return parsed;
     }
 
     fn parseJsonRpcError(err: ResponseError) Error {
