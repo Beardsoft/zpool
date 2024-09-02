@@ -3,6 +3,7 @@ const std = @import("std");
 pub const PolicyNetwork = enum {
     Unittest,
     Testnet,
+    Devnet,
 };
 
 // Although this function looks imperative, note that its job is to
@@ -28,6 +29,7 @@ pub fn build(b: *std.Build) void {
     const network_policy_path = switch (selected_policy) {
         PolicyNetwork.Testnet => b.path("lib/policy/testnet.zig"),
         PolicyNetwork.Unittest => b.path("lib/policy/unittest.zig"),
+        PolicyNetwork.Devnet => b.path("lib/policy/devnet.zig"),
     };
     const policy = b.addModule("policy", .{ .root_source_file = network_policy_path });
 
@@ -45,6 +47,7 @@ pub fn build(b: *std.Build) void {
     const zpool = b.addModule("zpool", .{
         .root_source_file = b.path("lib/lib.zig"),
     });
+    zpool.addImport("policy", policy);
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when

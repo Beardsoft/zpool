@@ -1,0 +1,28 @@
+diff --git a/.zkp_devnet/meta_data.json b/.zkp_devnet/meta_data.json
+index 9be15be53..a9627e2c2 100644
+--- a/.zkp_devnet/meta_data.json
++++ b/.zkp_devnet/meta_data.json
+@@ -1,5 +1,5 @@
+ {
+   "genesisHash": "bd79d1e2dd97e7ca0940fcd719f52baa473859661b5d7d4f092603d1d3fc67ad",
+   "vksCommitment": "0e602abf5b642b77f66a4cc7f452c9339b61f68bac7880c8258f4f808130c8a3ee5ad8a8a82703855bc94cc5b36a7df79882020617327a60e8905a41b86a269e7b680e23f4c1b30536f2fe27f6fd45110a557f3b42f73aba064ba46a3a85807f8271411a56da6edfac40941c7a8e53645154c0678391a9634133166410330ba6fe10e4a1e8157de3e155d1bfeb909343c91f5931d46c383a09b072de91f10bb3a78690afb648ef9086bb1f1c18443b6d2d699f1f110f5acaf37dc249cb80",
+-  "blocksPerEpoch": 43200
++  "blocksPerEpoch": 240
+ }
+\ No newline at end of file
+diff --git a/primitives/src/policy.rs b/primitives/src/policy.rs
+index c9c2dd24e..ec1d23e3b 100644
+--- a/primitives/src/policy.rs
++++ b/primitives/src/policy.rs
+@@ -645,9 +645,9 @@ impl Default for Policy {
+     fn default() -> Self {
+         Policy {
+             blocks_per_batch: 60,
+-            batches_per_epoch: 720,
++            batches_per_epoch: 4,
+             state_chunks_max_size: 1000,
+-            transaction_validity_window: 120,
++            transaction_validity_window: 2,
+             genesis_block_number: 0,
+         }
+     }

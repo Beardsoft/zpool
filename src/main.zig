@@ -17,7 +17,7 @@ pub fn main() !void {
     defer client.deinit();
 
     // TODO: get this url from config
-    const uri = try std.Uri.parse("https://rpc-testnet.nimiqcloud.com");
+    const uri = try std.Uri.parse("http://seed1.nimiq.local:8648");
 
     var jsonrpc_client = jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
 

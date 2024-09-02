@@ -63,8 +63,8 @@ services:
     networks:
       devnet:
         ipv4_address: 7.0.0.2
-    volumes:
-      - "seed1:/home/nimiq/.nimiq:rw"
+    # volumes:
+    #   - "seed1:/home/nimiq/.nimiq:rw"
 
   seed2:
     image: nimiq-albatross:latest
@@ -102,8 +102,8 @@ services:
     networks:
       devnet:
         ipv4_address: 7.0.0.3
-    volumes:
-      - "seed2:/home/nimiq/.nimiq:rw"
+    # volumes:
+    #   - "seed2:/home/nimiq/.nimiq:rw"
 
   seed3:
     image: nimiq-albatross:latest
@@ -141,8 +141,8 @@ services:
     networks:
       devnet:
         ipv4_address: 7.0.0.4
-    volumes:
-      - "seed3:/home/nimiq/.nimiq:rw"
+    # volumes:
+    #   - "seed3:/home/nimiq/.nimiq:rw"
 
   seed4:
     image: nimiq-albatross:latest
@@ -180,8 +180,8 @@ services:
     networks:
       devnet:
         ipv4_address: 7.0.0.5
-    volumes:
-      - "seed4:/home/nimiq/.nimiq:rw"
+    # volumes:
+    #   - "seed4:/home/nimiq/.nimiq:rw"
 
 volumes:
   seed1:
