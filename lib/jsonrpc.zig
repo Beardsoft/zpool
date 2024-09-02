@@ -2,6 +2,7 @@ const std = @import("std");
 const http = std.http;
 const json = std.json;
 const testing = std.testing;
+const types = @import("types.zig");
 
 const Allocator = std.mem.Allocator;
 const Uri = std.Uri;
@@ -75,7 +76,22 @@ pub const Client = struct {
         var req = ReqType{ .method = "getBlockNumber" };
 
         const ResponseType = Response(u64);
+        const parsed = try self.send(&req, ResponseType);
+        defer parsed.deinit();
 
+        return parsed.value.result.data;
+    }
+
+    /// `getValidatorByAddress` returns the given validator by address
+    pub fn getValidatorByAddress(self: *Self, address: []const u8) !types.Validator {
+        const ReqType = Request([][]const u8);
+        const params = try self.allocator.alloc([]const u8, 1);
+        defer self.allocator.free(params);
+
+        params[0] = address;
+        var req = ReqType{ .method = "getValidatorByAddress", .params = params };
+
+        const ResponseType = Response(types.Validator);
         const parsed = try self.send(&req, ResponseType);
         defer parsed.deinit();
 
