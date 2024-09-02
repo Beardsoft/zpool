@@ -4,10 +4,11 @@ const testing = std.testing;
 
 const BlockType = @import("block.zig").BlockType;
 
-pub const genesis_number = 3032010;
-pub const batch_size = 60;
-pub const epoch_size = 43200;
-pub const batches_per_epoch = 720;
+const policy = @import("policy");
+pub const genesis_number = policy.genesis_number;
+pub const batch_size = policy.batch_size;
+pub const epoch_size = policy.epoch_size;
+pub const batches_per_epoch = policy.batches_per_epoch;
 
 pub fn getBlockNumberForBatch(batch_number: u64) u64 {
     return batch_number * batch_size + genesis_number;
@@ -42,6 +43,13 @@ pub fn getBlockTypeByBlockNumber(block_number: u64) BlockType {
     }
 
     return BlockType.Micro;
+}
+
+test "policy unittest constants" {
+    try testing.expect(genesis_number == 0);
+    try testing.expect(batch_size == 60);
+    try testing.expect(epoch_size == 43200);
+    try testing.expect(batches_per_epoch == 720);
 }
 
 test "block number for batch number" {

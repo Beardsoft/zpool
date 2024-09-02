@@ -1,5 +1,10 @@
 const std = @import("std");
 
+pub const PolicyNetwork = enum {
+    Unittest,
+    Testnet,
+};
+
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
@@ -15,6 +20,17 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
+    // Nimiq networks can have different constants altering core logic of the pool
+    // we expose the 'policy' option to allow overwriting policy constants for the
+    // correct ntwork.
+    const policy_option = b.option(PolicyNetwork, "policy", "policy constants used for core logic");
+    const selected_policy = policy_option orelse PolicyNetwork.Unittest;
+    const network_policy_path = switch (selected_policy) {
+        PolicyNetwork.Testnet => b.path("lib/policy/testnet.zig"),
+        PolicyNetwork.Unittest => b.path("lib/policy/unittest.zig"),
+    };
+    const policy = b.addModule("policy", .{ .root_source_file = network_policy_path });
+
     const lib = b.addStaticLibrary(.{
         .name = "zpool",
         // In this case the main source file is merely a path, however, in more
@@ -24,7 +40,8 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    // This adds a module which allows it to be imported as module with Zon
+    lib.root_module.addImport("policy", policy);
+
     const zpool = b.addModule("zpool", .{
         .root_source_file = b.path("lib/lib.zig"),
     });
@@ -78,6 +95,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
+    lib_unit_tests.root_module.addImport("policy", policy);
 
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
 
