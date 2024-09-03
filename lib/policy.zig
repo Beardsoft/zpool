@@ -2,9 +2,10 @@ const std = @import("std");
 const math = std.math;
 const testing = std.testing;
 
+const policy = @import("policy");
+
 const BlockType = @import("types.zig").BlockType;
 
-const policy = @import("policy");
 pub const genesis_number = policy.genesis_number;
 pub const batch_size = policy.batch_size;
 pub const epoch_size = policy.epoch_size;

@@ -1,8 +1,10 @@
 const std = @import("std");
-const zpool = @import("zpool");
+const Allocator = std.mem.Allocator;
+
+const Config = @import("config.zig");
 const main = @import("main.zig");
 
-const Allocator = std.mem.Allocator;
+const zpool = @import("zpool");
 const BlockType = zpool.types.BlockType;
 const jsonrpc = zpool.jsonrpc;
 const policy = zpool.policy;
@@ -10,7 +12,7 @@ const policy = zpool.policy;
 const Self = @This();
 
 client: *jsonrpc.Client,
-cfg: *main.Config,
+cfg: *Config,
 allocator: Allocator,
 
 pub fn watchChainHeight(self: *Self) !void {

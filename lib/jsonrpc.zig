@@ -1,12 +1,12 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
+const ArenaAllocator = std.heap.ArenaAllocator;
 const http = std.http;
 const json = std.json;
 const testing = std.testing;
-const types = @import("types.zig");
-
-const Allocator = std.mem.Allocator;
-const ArenaAllocator = std.heap.ArenaAllocator;
 const Uri = std.Uri;
+
+const types = @import("types.zig");
 
 pub const Error = error{
     ParseError,

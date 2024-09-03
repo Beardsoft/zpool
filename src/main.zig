@@ -1,12 +1,14 @@
 const std = @import("std");
 const http = std.http;
 
+const Config = @import("config.zig");
+const db = @import("db.zig");
+const poller = @import("poller.zig");
+
 const zpool = @import("zpool");
 const block = zpool.block;
 const jsonrpc = zpool.jsonrpc;
 const policy = zpool.policy;
-
-const poller = @import("./poller.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -21,15 +23,7 @@ pub fn main() !void {
     var jsonrpc_client = jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
     var new_poller = poller{ .cfg = &cfg, .client = &jsonrpc_client, .allocator = allocator };
 
+    _ = try db.init(cfg.sqlite_db_path);
+
     try new_poller.watchChainHeight();
 }
-
-// TODO: this needs to be loaded from somewhere
-pub const Config = struct {
-    rpc_url: []const u8 = "http://seed1.nimiq.local:8648",
-    rpc_username: ?[]const u8 = null,
-    rpc_password: ?[]const u8 = null,
-
-    validator_address: []const u8 = "NQ20 TSB0 DFSM UH9C 15GQ GAGJ TTE4 D3MA 859E",
-    reward_address: []const u8 = "NQ20 TSB0 DFSM UH9C 15GQ GAGJ TTE4 D3MA 859E",
-};
