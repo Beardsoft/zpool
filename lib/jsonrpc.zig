@@ -5,6 +5,7 @@ const testing = std.testing;
 const types = @import("types.zig");
 
 const Allocator = std.mem.Allocator;
+const ArenaAllocator = std.heap.ArenaAllocator;
 const Uri = std.Uri;
 
 pub const Error = error{
@@ -51,6 +52,26 @@ pub fn Response(comptime T: type) type {
     };
 }
 
+/// Envelope is a wrapper around a type
+/// includes the `block_number` from metadata if available
+/// The wrapped type is allocated using an ArenaAllocator
+/// after usage of the wrapped type call deinit() to free memory.
+pub fn Envelope(comptime T: type) type {
+    return struct {
+        const Self = @This();
+
+        result: T,
+        block_number: ?u64,
+        arena: ?ArenaAllocator = null,
+
+        pub fn deinit(self: *Self) void {
+            if (self.arena) |allocator| {
+                allocator.deinit();
+            }
+        }
+    };
+}
+
 const ResponseError = struct {
     code: i32,
     message: []u8,
@@ -83,7 +104,7 @@ pub const Client = struct {
     }
 
     /// `getValidatorByAddress` returns the given validator by address
-    pub fn getValidatorByAddress(self: *Self, address: []const u8) !types.Validator {
+    pub fn getValidatorByAddress(self: *Self, address: []const u8, allocator: Allocator) !Envelope(types.Validator) {
         const ReqType = Request([][]const u8);
         const params = try self.allocator.alloc([]const u8, 1);
         defer self.allocator.free(params);
@@ -95,7 +116,39 @@ pub const Client = struct {
         const parsed = try self.send(&req, ResponseType);
         defer parsed.deinit();
 
-        return parsed.value.result.data;
+        var arena = ArenaAllocator.init(allocator);
+        const arena_allocator = arena.allocator();
+        const new_validator = try parsed.value.result.data.cloneArenaAlloc(arena_allocator);
+
+        const EnvelopeType = Envelope(types.Validator);
+        const block_number: ?u64 = if (parsed.value.result.metadata) |meta| meta.blockNumber else null;
+        return EnvelopeType{ .block_number = block_number, .result = new_validator, .arena = arena };
+    }
+
+    /// `getStakersByValidatorAddress` returns the stakers for the given validator
+    pub fn getStakersByValidatorAddress(self: *Self, address: []const u8, allocator: Allocator) !Envelope([]types.Staker) {
+        const ReqType = Request([][]const u8);
+        const params = try self.allocator.alloc([]const u8, 1);
+        defer self.allocator.free(params);
+
+        params[0] = address;
+        var req = ReqType{ .method = "getStakersByValidatorAddress", .params = params };
+
+        const ResponseType = Response([]types.Staker);
+        const parsed = try self.send(&req, ResponseType);
+        defer parsed.deinit();
+
+        var arena = ArenaAllocator.init(allocator);
+        const arena_allocator = arena.allocator();
+        const stakers = try arena_allocator.alloc(types.Staker, parsed.value.result.data.len);
+        for (parsed.value.result.data, 0..) |staker, index| {
+            const cloned = try staker.cloneArenaAlloc(arena_allocator);
+            stakers[index] = cloned;
+        }
+
+        const EnvelopeType = Envelope([]types.Staker);
+        const block_number: ?u64 = if (parsed.value.result.metadata) |meta| meta.blockNumber else null;
+        return EnvelopeType{ .block_number = block_number, .result = stakers, .arena = arena };
     }
 
     /// send a raw JSON-RPC request, returns the decoded JSON-RPC response
@@ -128,13 +181,12 @@ pub const Client = struct {
             return Error.UnexpectedHttpStatus;
         }
 
-        var dest = std.ArrayList(u8).init(self.allocator);
-        defer dest.deinit();
-
         const response_size = http_req.response.content_length orelse 1024;
-        try http_req.reader().readAllArrayList(&dest, @as(usize, response_size));
+        const json_str = try self.allocator.alloc(u8, @as(usize, response_size));
+        defer self.allocator.free(json_str);
+        _ = try http_req.reader().readAll(json_str);
 
-        const parsed = try json.parseFromSlice(ResponseType, self.allocator, dest.allocatedSlice(), .{ .ignore_unknown_fields = true });
+        const parsed = try json.parseFromSlice(ResponseType, self.allocator, json_str, .{ .ignore_unknown_fields = true });
         if (parsed.value.@"error") |err| {
             return parseJsonRpcError(err);
         }

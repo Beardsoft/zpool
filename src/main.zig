@@ -17,12 +17,11 @@ pub fn main() !void {
     defer client.deinit();
 
     var cfg = Config{};
-
     const uri = try std.Uri.parse(cfg.rpc_url);
-
     var jsonrpc_client = jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
+    var new_poller = poller{ .cfg = &cfg, .client = &jsonrpc_client, .allocator = allocator };
 
-    try poller.pollLatestBlockHeight(&jsonrpc_client, &cfg);
+    try new_poller.watchChainHeight();
 }
 
 // TODO: this needs to be loaded from somewhere

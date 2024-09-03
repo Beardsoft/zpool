@@ -2,7 +2,7 @@ const std = @import("std");
 const math = std.math;
 const testing = std.testing;
 
-const BlockType = @import("block.zig").BlockType;
+const BlockType = @import("types.zig").BlockType;
 
 const policy = @import("policy");
 pub const genesis_number = policy.genesis_number;
