@@ -22,12 +22,7 @@
     // `zig build --fetch` can be used to fetch all dependencies of a package, recursively.
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
-    .dependencies = .{
-        .sqlite = .{
-            .url = "https://github.com/vrischmann/zig-sqlite/archive/b0956d8f8adc5560af9fe15bca8e93c2b06019b5.tar.gz",
-            .hash = "1220fa86ff378b279cba3c162fab964eb51363fdf57a6b2fb9ce62ca2de501d95dca",
-        },
-    },
+    .dependencies = .{},
     .paths = .{
         "build.zig",
         "build.zig.zon",

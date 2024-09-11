@@ -1,9 +1,11 @@
 const std = @import("std");
 const http = std.http;
+const testing = std.testing;
 
 const Config = @import("config.zig");
-const db = @import("db.zig");
 const poller = @import("poller.zig");
+const querier = @import("querier.zig");
+const sqlite = @import("sqlite.zig");
 
 const zpool = @import("zpool");
 const block = zpool.block;
@@ -23,7 +25,18 @@ pub fn main() !void {
     var jsonrpc_client = jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
     var new_poller = poller{ .cfg = &cfg, .client = &jsonrpc_client, .allocator = allocator };
 
-    _ = try db.init(cfg.sqlite_db_path);
+    var sqlite_conn = try sqlite.open(cfg.sqlite_db_path);
+    querier.migrate.execute(&sqlite_conn) catch |err| {
+        std.log.err("executing migration failed: {}", .{err});
+        return;
+    };
 
-    try new_poller.watchChainHeight();
+    new_poller.watchChainHeight() catch |err| {
+        std.log.err("error on watching chain height: {}", .{err});
+        std.posix.exit(1);
+    };
+}
+
+test {
+    testing.refAllDecls(@This());
 }
