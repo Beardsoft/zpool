@@ -14,6 +14,11 @@ const jsonrpc = zpool.jsonrpc;
 const policy = zpool.policy;
 
 pub fn main() !void {
+    if (try std.Thread.getCpuCount() < 2) {
+        std.log.err("zpool requires a minimum of 2 cpu cores to run", .{});
+        std.posix.exit(1);
+    }
+
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
