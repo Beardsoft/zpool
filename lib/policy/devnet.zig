@@ -6,3 +6,5 @@ pub const genesis_number = 0;
 pub const batch_size = 60;
 pub const epoch_size = 240;
 pub const batches_per_epoch = 4;
+pub const collection_batches = 4;
+pub const collection_size = 240;

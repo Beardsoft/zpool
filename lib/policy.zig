@@ -10,6 +10,8 @@ pub const genesis_number = policy.genesis_number;
 pub const batch_size = policy.batch_size;
 pub const epoch_size = policy.epoch_size;
 pub const batches_per_epoch = policy.batches_per_epoch;
+pub const collection_batches = policy.collection_batches;
+pub const collection_size = policy.collection_size;
 
 pub fn getBlockNumberForBatch(batch_number: u64) u64 {
     return batch_number * batch_size + genesis_number;
@@ -21,6 +23,20 @@ pub fn getBlockNumberForEpoch(epoch_number: u64) u64 {
 
 pub fn getBatchFromBlockNumber(block_number: u64) u64 {
     return calculateSizeForBlock(block_number, batch_size);
+}
+
+pub fn getCollectionFromBlockNumber(block_number: u64) u64 {
+    if (block_number < batch_size) return 0;
+    return calculateSizeForBlock(block_number - batch_size, collection_size);
+}
+
+pub fn getCollectionFromBatchNumber(batch_number: u64) u64 {
+    return getCollectionFromBlockNumber(getBlockNumberForBatch(batch_number));
+}
+
+pub fn getFirstBatchFromCollection(collection_number: u64) u64 {
+    const block_number = ((collection_number - 1) * collection_size) + batch_size + 1 + genesis_number;
+    return getBatchFromBlockNumber(block_number);
 }
 
 pub fn getEpochFromBatchNumber(batch_number: u64) u64 {
@@ -67,4 +83,11 @@ test "block number for epoch number" {
 
 test "get epoch from batch number" {
     try testing.expect(getEpochFromBatchNumber(721) == 2);
+}
+
+test "get collection from block number" {
+    try testing.expect(getCollectionFromBlockNumber(60) == 0);
+    try testing.expect(getCollectionFromBlockNumber(120) == 1);
+    try testing.expect(getFirstBatchFromCollection(1) == 2);
+    try testing.expect(getFirstBatchFromCollection(2) == 242);
 }
