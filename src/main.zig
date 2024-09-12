@@ -6,6 +6,7 @@ const Config = @import("config.zig");
 const poller = @import("poller.zig");
 const querier = @import("querier.zig");
 const sqlite = @import("sqlite.zig");
+const worker = @import("worker.zig");
 
 const zpool = @import("zpool");
 const block = zpool.block;
@@ -26,6 +27,10 @@ pub fn main() !void {
 
     var sqlite_conn = try sqlite.open(cfg.sqlite_db_path);
     // TODO defer close here
+
+    const worker_args = worker.WorkerArgs{};
+    const worker_thread = try std.Thread.spawn(.{}, worker.run, .{worker_args});
+    defer worker_thread.join();
 
     querier.migrations.execute(&sqlite_conn) catch |err| {
         std.log.err("executing migration failed: {}", .{err});
