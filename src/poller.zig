@@ -87,14 +87,18 @@ fn fetchValidatorDetails(self: *Self, current_height: u64) !void {
         return;
     }
 
+    // TODO:
+    // validator status could also be that there are no stakers at all. In which case
+    // we don't have to do anything as a pool. We have to introduce a separate status for this.
+
     std.log.info("Validator is elected. Balance {d}. Num stakers: {d}", .{ validator.balance, validator.numStakers });
     try querier.epochs.insertNewEpoch(self.sqlite_conn, next_epoch_number, validator.numStakers, validator.balance, querier.statuses.Status.InProgress);
     if (validator.numStakers > 0) {
-        try self.fetchValidatorStakers(validator.balance);
+        try self.fetchValidatorStakers(validator.balance, next_epoch_number);
     }
 }
 
-fn fetchValidatorStakers(self: *Self, validator_balance: u64) !void {
+fn fetchValidatorStakers(self: *Self, validator_balance: u64, epoch_number: u64) !void {
     var response = try self.client.getStakersByValidatorAddress(self.cfg.validator_address, self.allocator);
     defer response.deinit();
 
@@ -110,5 +114,6 @@ fn fetchValidatorStakers(self: *Self, validator_balance: u64) !void {
         const stake = @as(f64, @floatFromInt(staker.balance)) * 100 / @as(f64, @floatFromInt(validator_balance));
 
         std.log.info("Staker with address {s} has stake of {d:.5} with balance {d}", .{ staker.address, stake, staker.balance });
+        try querier.stakers.insertNewStaker(self.sqlite_conn, staker.address, epoch_number, staker.balance, stake);
     }
 }
