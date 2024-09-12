@@ -27,6 +27,10 @@ pub fn getEpochFromBatchNumber(batch_number: u64) u64 {
     return calculateSizeForBlock(getBlockNumberForBatch(batch_number), epoch_size);
 }
 
+pub fn getEpochFromBlockNumber(block_number: u64) u64 {
+    return calculateSizeForBlock(block_number, epoch_size);
+}
+
 fn calculateSizeForBlock(block_number: u64, size: comptime_int) u64 {
     const number = block_number - genesis_number;
     return @intFromFloat(math.ceil(@as(f64, @floatFromInt(number)) / size));

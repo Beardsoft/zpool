@@ -52,48 +52,78 @@ const migration_version_0 =
     \\CREATE TABLE migrations (
     \\    version INTEGER NOT NULL
     \\);
+    \\
     \\CREATE TABLE IF NOT EXISTS cursors(
     \\    id INTEGER NOT NULL PRIMARY KEY,
-    \\    block_number UNSIGNED BIGINT NOT NULL
+    \\    block_number INTEGER NOT NULL
     \\);
+    \\
+    \\CREATE TABLE IF NOT EXISTS statuses(
+    \\    id INTEGER NOT NULL PRIMARY KEY,
+    \\    status TEXT NOT NULL
+    \\);
+    \\
+    \\INSERT INTO statuses(id, status) VALUES 
+    \\    (1, "NOT_ELECTED"),
+    \\    (2, "IN_PROGRESS"),
+    \\    (3, "RETIRED"),
+    \\    (4, "INACTIVE"),
+    \\    (5, "ERROR"),
+    \\    (6, "COMPLETED"),
+    \\    (7, "PENDING"),
+    \\    (8, "OUT_FOR_PAYMENT");
+    \\
     \\CREATE TABLE IF NOT EXISTS epochs(
-    \\    number UNSIGNED BIGINT NOT NULL PRIMARY KEY,
+    \\    number INTEGER NOT NULL PRIMARY KEY,
     \\    num_stakers INTEGER NOT NULL,
-    \\    balance UNSIGNED BIGINT NOT NULL
+    \\    balance INTEGER NOT NULL,
+    \\    status_id INTEGER NOT NULL,
+    \\
+    \\    FOREIGN KEY(status_id) REFERENCES statuses(id)
     \\);
+    \\
     \\CREATE TABLE IF NOT EXISTS stakers(
-    \\    address VARCHAR(44) NOT NULL,
-    \\    epoch_number UNSIGNED BIGINT NOT NULL,
-    \\    stake_balance UNSIGNED BIGINT NOT NULL,
+    \\    address TEXT NOT NULL,
+    \\    epoch_number INTEGER NOT NULL,
+    \\    stake_balance INTEGER NOT NULL,
     \\    stake_percentage REAL NOT NULL,
     \\
     \\    PRIMARY KEY (address, epoch_number),
     \\    FOREIGN KEY(epoch_number) REFERENCES epochs(number)
     \\);
+    \\
     \\CREATE TABLE IF NOT EXISTS rewards(
-    \\    epoch_number UNSIGNED BIGINT NOT NULL,
-    \\    collection_number UNSIGNED BIGINT NOT NULL,
-    \\    reward UNSIGNED BIGINT NOT NULL,
+    \\    epoch_number INTEGER NOT NULL,
+    \\    collection_number INTEGER NOT NULL,
+    \\    reward INTEGER NOT NULL,
     \\
     \\    PRIMARY KEY(epoch_number, collection_number),
     \\    FOREIGN KEY(epoch_number) REFERENCES epochs(number)
     \\);
+    \\
     \\CREATE TABLE IF NOT EXISTS transactions(
-    \\    hash VARCHAR(255) NOT NULL PRIMARY KEY,
-    \\    address VARCHAR(44) NOT NULL,
-    \\    amount UNSIGNED BIGINT NOT NULL
+    \\    hash TEXT NOT NULL PRIMARY KEY,
+    \\    address TEXT NOT NULL,
+    \\    amount INTEGER NOT NULL,
+    \\    status_id INTEGER NOT NULL,
+    \\
+    \\    FOREIGN KEY(status_id) REFERENCES statuses(id)
     \\);
+    \\
     \\CREATE TABLE IF NOT EXISTS payslips(
-    \\    collection_number UNSIGNED BIGINT NOT NULL,
-    \\    address VARCHAR(44) NOT NULL,
-    \\    amount UNSIGNED BIGINT NOT NULL,
-    \\    fee UNSIGNED BIGINT NOT NULL,
-    \\    tx_hash VARCHAR(255),
+    \\    collection_number INTEGER NOT NULL,
+    \\    address TEXT NOT NULL,
+    \\    amount INTEGER NOT NULL,
+    \\    fee INTEGER NOT NULL,
+    \\    status_id INTEGER NOT NULL,
+    \\    tx_hash TEXT,
     \\
     \\    PRIMARY KEY(collection_number, address),
     \\    FOREIGN KEY(collection_number) REFERENCES rewards(collection_number),
+    \\    FOREIGN KEY(status_id) REFERENCES statuses(id),
     \\    FOREIGN KEY(tx_hash) REFERENCES transactions(hash)
     \\);
+    \\
     \\INSERT INTO migrations(version) VALUES(1);
 ;
 

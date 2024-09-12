@@ -47,7 +47,10 @@ pub fn watchChainHeight(self: *Self) !void {
         // TODO: remove this
         // for now we stop after two epochs. This way the Zig memory debugger
         // can catch any memory leaks we might have after running.
-        if (policy.getBatchFromBlockNumber(last_block) > 8) return;
+        if (policy.getBatchFromBlockNumber(last_block) > 8) {
+            std.log.warn("REMOVE ME: early exit after batch 8", .{});
+            return;
+        }
     }
 }
 
@@ -65,6 +68,12 @@ fn handleNewHeight(self: *Self, height: u64) !void {
 }
 
 fn fetchValidatorDetails(self: *Self, current_height: u64) !void {
+    const next_epoch_number = policy.getEpochFromBlockNumber(current_height) + 1;
+    if (try querier.epochs.epochExists(self.sqlite_conn, next_epoch_number)) {
+        std.log.warn("epoch {d} already handled", .{next_epoch_number});
+        return;
+    }
+
     var response = try self.client.getValidatorByAddress(self.cfg.validator_address, self.allocator);
     defer response.deinit();
 
@@ -79,6 +88,7 @@ fn fetchValidatorDetails(self: *Self, current_height: u64) !void {
     }
 
     std.log.info("Validator is elected. Balance {d}. Num stakers: {d}", .{ validator.balance, validator.numStakers });
+    try querier.epochs.insertNewEpoch(self.sqlite_conn, next_epoch_number, validator.numStakers, validator.balance, querier.statuses.Status.InProgress);
     if (validator.numStakers > 0) {
         try self.fetchValidatorStakers(validator.balance);
     }
