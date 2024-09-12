@@ -1,6 +1,11 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Config = @import("config.zig");
+const http = std.http;
+const sqlite = @import("sqlite.zig");
+
+const zpool = @import("zpool");
+const jsonrpc = zpool.jsonrpc;
 
 pub const InstructionType = enum {
     Collection,
@@ -13,7 +18,8 @@ const QueueType = std.DoublyLinkedList(Instruction);
 pub const Queue = struct {
     queue: QueueType = QueueType{},
     allocator: Allocator,
-    mutex: std.Thread.Mutex,
+    mutex: std.Thread.RwLock = std.Thread.RwLock{},
+    closed: bool = false,
 
     const Self = @This();
 
@@ -26,7 +32,7 @@ pub const Queue = struct {
         self.queue.append(node);
     }
 
-    pub fn get(self: *Self) !?QueueType.Node {
+    pub fn get(self: *Self) !?Instruction {
         self.mutex.lock();
         defer self.mutex.unlock();
 
@@ -41,6 +47,26 @@ pub const Queue = struct {
         }
 
         return null;
+    }
+
+    pub fn close(self: *Self) void {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        self.closed = true;
+
+        while (self.queue.len > 0) {
+            const node = self.queue.pop();
+            if (node) |node_ptr| {
+                self.allocator.destroy(node_ptr);
+            }
+        }
+    }
+
+    pub fn isClosed(self: *Self) bool {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+
+        return self.closed;
     }
 };
 
@@ -63,20 +89,54 @@ pub const Timer = struct {
     }
 };
 
-pub const WorkerArgs = struct {};
+pub const Args = struct {
+    queue: *Queue,
+    cfg: *Config,
+};
 
-pub fn run(_: WorkerArgs) !void {
-    std.log.info("running on a thread", .{});
+pub const Process = struct {
+    const Self = @This();
 
-    const interval_queue_consume = 1 * std.time.ms_per_min;
+    queue: *Queue,
+    cfg: *Config,
 
-    var timer = Timer.new();
-    while (true) {
-        if (timer.hasPassedDuration(interval_queue_consume)) {
-            std.log.info("a minute has passed", .{});
-            timer.reset();
+    pub fn run(self: *Self) !void {
+        std.log.info("started worker thread", .{});
+
+        const interval_queue_consume = 1 * std.time.ms_per_min;
+
+        var queue_timer = Timer.new();
+        while (!self.queue.isClosed()) {
+            if (queue_timer.hasPassedDuration(interval_queue_consume)) {
+                queue_timer.reset();
+
+                if (try self.queue.get()) |instruction| {
+                    try self.handleInstruction(instruction);
+                }
+            }
+
+            std.time.sleep(15 * std.time.ns_per_s);
         }
 
-        std.time.sleep(15 * std.time.ns_per_s);
+        std.log.info("worker stopped", .{});
     }
+
+    fn handleInstruction(_: *Self, instruction: Instruction) !void {
+        std.log.info("got instruction: {}, {}", .{ instruction.instruction_type, instruction.number });
+    }
+};
+
+pub fn run(args: Args) !void {
+    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    // defer _ = gpa.deinit();
+    // const allocator = gpa.allocator();
+
+    // var client = http.Client{ .allocator = allocator };
+    // defer client.deinit();
+    // const uri = try std.Uri.parse(args.cfg.rpc_url);
+    // var jsonrpc_client = jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
+
+    // var sqlite_conn = try sqlite.open(args.cfg.sqlite_db_path);
+    var worker_process = Process{ .cfg = args.cfg, .queue = args.queue };
+    try worker_process.run();
 }

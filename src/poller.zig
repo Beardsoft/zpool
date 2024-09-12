@@ -4,6 +4,7 @@ const Allocator = std.mem.Allocator;
 const Config = @import("config.zig");
 const querier = @import("querier.zig");
 const sqlite = @import("sqlite.zig");
+const worker = @import("worker.zig");
 
 const zpool = @import("zpool");
 const BlockType = zpool.types.BlockType;
@@ -16,9 +17,9 @@ client: *jsonrpc.Client,
 cfg: *Config,
 allocator: Allocator,
 sqlite_conn: *sqlite.Conn,
+queue: *worker.Queue,
 
 pub fn watchChainHeight(self: *Self) !void {
-    // TODO: last block should come from database
     var last_block: u64 = try querier.cursors.getLastPollerHeight(self.sqlite_conn);
     while (true) {
         const block_number = try self.client.getBlockNumber();
@@ -57,13 +58,28 @@ pub fn watchChainHeight(self: *Self) !void {
 fn handleNewHeight(self: *Self, height: u64) !void {
     switch (policy.getBlockTypeByBlockNumber(height)) {
         BlockType.Checkpoint => {
-            std.log.info("Checkpoint block passed. Block number {d}. Batch number {d}", .{ height, policy.getBatchFromBlockNumber(height) });
+            std.log.debug("Checkpoint block passed. Block number {d}. Batch number {d}", .{ height, policy.getBatchFromBlockNumber(height) });
+            try self.handleCheckpointBlock(height);
         },
         BlockType.Election => {
             std.log.info("Election block passed. Block number {d}. Batch number {d}", .{ height, policy.getBatchFromBlockNumber(height) });
             try self.fetchValidatorDetails(height);
         },
         BlockType.Micro => {},
+    }
+}
+
+fn handleCheckpointBlock(self: *Self, height: u64) !void {
+    const current_collection = policy.getCollectionFromBlockNumber(height);
+    if (current_collection == 0) return;
+
+    const next_collection = current_collection + 1;
+
+    if (policy.getCollectionFromBlockNumber(height + 1) == next_collection) {
+        std.log.info("a collection has been completed: {d}", .{current_collection});
+
+        const instruction = worker.Instruction{ .instruction_type = worker.InstructionType.Collection, .number = current_collection };
+        try self.queue.add(instruction);
     }
 }
 
