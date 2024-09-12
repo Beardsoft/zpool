@@ -23,14 +23,16 @@ pub fn main() !void {
     var cfg = Config{};
     const uri = try std.Uri.parse(cfg.rpc_url);
     var jsonrpc_client = jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
-    var new_poller = poller{ .cfg = &cfg, .client = &jsonrpc_client, .allocator = allocator };
 
     var sqlite_conn = try sqlite.open(cfg.sqlite_db_path);
-    querier.migrate.execute(&sqlite_conn) catch |err| {
+    // TODO defer close here
+
+    querier.migrations.execute(&sqlite_conn) catch |err| {
         std.log.err("executing migration failed: {}", .{err});
         return;
     };
 
+    var new_poller = poller{ .cfg = &cfg, .client = &jsonrpc_client, .allocator = allocator, .sqlite_conn = &sqlite_conn };
     new_poller.watchChainHeight() catch |err| {
         std.log.err("error on watching chain height: {}", .{err});
         std.posix.exit(1);

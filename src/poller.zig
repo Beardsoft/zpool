@@ -2,7 +2,8 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const Config = @import("config.zig");
-const main = @import("main.zig");
+const querier = @import("querier.zig");
+const sqlite = @import("sqlite.zig");
 
 const zpool = @import("zpool");
 const BlockType = zpool.types.BlockType;
@@ -14,10 +15,11 @@ const Self = @This();
 client: *jsonrpc.Client,
 cfg: *Config,
 allocator: Allocator,
+sqlite_conn: *sqlite.Conn,
 
 pub fn watchChainHeight(self: *Self) !void {
     // TODO: last block should come from database
-    var last_block: u64 = 0;
+    var last_block: u64 = try querier.cursors.getLastPollerHeight(self.sqlite_conn);
     while (true) {
         const block_number = try self.client.getBlockNumber();
 
@@ -37,13 +39,15 @@ pub fn watchChainHeight(self: *Self) !void {
             try self.handleNewHeight(last_block);
         }
 
+        querier.cursors.upsertPollerHeight(self.sqlite_conn, last_block) catch |err| {
+            std.log.err("failed to upsert height: {}", .{err});
+            return err;
+        };
+
         // TODO: remove this
         // for now we stop after two epochs. This way the Zig memory debugger
         // can catch any memory leaks we might have after running.
         if (policy.getBatchFromBlockNumber(last_block) > 8) return;
-
-        // TODO:
-        // we need to upsert the last block number into the database here
     }
 }
 
