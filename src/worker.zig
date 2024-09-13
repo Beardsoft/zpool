@@ -153,6 +153,9 @@ pub const Process = struct {
             std.log.warn("collection {d} passed for invalid epoch {d} with status {}. Ignoring collection", .{ collection_number, epoch_number, epoch_status });
         }
 
+        // TODO:
+        // probably want to check the database if we have handled the collection already
+
         std.log.info("Collection {d} passed for epoch {d}. Fetching rewards.", .{ collection_number, epoch_number });
 
         var reward: u64 = 0;
@@ -192,6 +195,25 @@ pub const Process = struct {
         }
 
         std.log.info("Reward for collection {d} completed: {d}", .{ collection_number, reward });
+
+        // TODO:
+        // the reward and pool fee does not consider the stake of the validator itself
+        // we could theoretically consider this pool fee as well, but we can also leave it as is
+        const pool_fee = reward / 100 * self.cfg.pool_fee_percentage;
+        reward -= pool_fee;
+
+        try querier.rewards.insertNewReward(self.sqlite_conn, epoch_number, collection_number, reward, pool_fee);
+
+        const stakers = try querier.stakers.getStakersByEpoch(self.sqlite_conn, self.allocator, epoch_number);
+        defer stakers.deinit();
+
+        for (stakers.data) |staker| {
+            const staker_reward: u64 = @intFromFloat(@as(f64, @floatFromInt(reward)) / 100.00 * staker.stake_percentage);
+            std.log.info("Staker {s} is owed {d} for collection {d}", .{ staker.address, staker_reward, collection_number });
+
+            // TODO:
+            // store payslip
+        }
     }
 };
 

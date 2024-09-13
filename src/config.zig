@@ -8,3 +8,4 @@ rpc_password: ?[]const u8 = null,
 
 validator_address: []const u8 = "NQ20 TSB0 DFSM UH9C 15GQ GAGJ TTE4 D3MA 859E",
 reward_address: []const u8 = "NQ20 TSB0 DFSM UH9C 15GQ GAGJ TTE4 D3MA 859E",
+pool_fee_percentage: u64 = 5,

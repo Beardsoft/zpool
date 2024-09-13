@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS rewards(
     epoch_number INTEGER NOT NULL,
     collection_number INTEGER NOT NULL,
     reward INTEGER NOT NULL,
+    pool_fee INTEGER NOT NULL,
 
     PRIMARY KEY(epoch_number, collection_number),
     FOREIGN KEY(epoch_number) REFERENCES epochs(number)
@@ -59,7 +60,6 @@ CREATE TABLE IF NOT EXISTS payslips(
     collection_number INTEGER NOT NULL,
     address TEXT NOT NULL,
     amount INTEGER NOT NULL,
-    fee INTEGER NOT NULL,
     status_id NOT NULL,
     tx_hash TEXT,
 
