@@ -154,6 +154,31 @@ pub const Client = struct {
         return EnvelopeType{ .block_number = block_number, .result = stakers, .arena = arena };
     }
 
+    /// `getInherentsByBlockNumber` returns the inherents for the given block number
+    pub fn getInherentsByBlockNumber(self: *Self, block_number: u64, allocator: Allocator) !Envelope([]types.Inherent) {
+        const params = try self.allocator.alloc(u64, 1);
+        defer self.allocator.free(params);
+        params[0] = block_number;
+
+        const ReqType = Request([]u64);
+        var req = ReqType{ .method = "getInherentsByBlockNumber", .params = params };
+
+        const ResponseType = Response([]types.Inherent);
+        const parsed = try self.send(&req, ResponseType);
+        defer parsed.deinit();
+
+        var arena = ArenaAllocator.init(allocator);
+        const arena_allocator = arena.allocator();
+        const inherents = try arena_allocator.alloc(types.Inherent, parsed.value.result.?.data.len);
+        for (parsed.value.result.?.data, 0..) |inherent, index| {
+            const cloned = try inherent.cloneArenaAlloc(arena_allocator);
+            inherents[index] = cloned;
+        }
+
+        const EnvelopeType = Envelope([]types.Inherent);
+        return EnvelopeType{ .block_number = block_number, .result = inherents, .arena = arena };
+    }
+
     /// send a raw JSON-RPC request, returns the decoded JSON-RPC response
     pub fn send(self: *Self, req: anytype, comptime ResponseType: type) !json.Parsed(ResponseType) {
         const headers = std.http.Client.Request.Headers{

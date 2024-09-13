@@ -102,7 +102,9 @@ pub const Process = struct {
 
     queue: *Queue,
     cfg: *Config,
+    client: *jsonrpc.Client,
     sqlite_conn: *sqlite.Conn,
+    allocator: Allocator,
 
     pub fn run(self: *Self) !void {
         std.log.info("started worker thread", .{});
@@ -114,6 +116,8 @@ pub const Process = struct {
             if (queue_timer.hasPassedDuration(interval_queue_consume)) {
                 queue_timer.reset();
 
+                // TODO:
+                // this should empty the queue
                 if (try self.queue.get()) |instruction| {
                     try self.handleInstruction(instruction);
                 }
@@ -146,24 +150,62 @@ pub const Process = struct {
         };
 
         if (epoch_status.isInvalid()) {
-            std.log.warn("collection passed for invalid epoch {d} with status {}. Ignoring collection", .{ epoch_number, epoch_status });
+            std.log.warn("collection {d} passed for invalid epoch {d} with status {}. Ignoring collection", .{ collection_number, epoch_number, epoch_status });
         }
 
         std.log.info("Collection {d} passed for epoch {d}. Fetching rewards.", .{ collection_number, epoch_number });
+
+        var reward: u64 = 0;
+        var batch_index: u64 = 0;
+
+        // TODO: double check this includes all batches
+        batch_loop: while (batch_index < policy.collection_batches) : (batch_index += 1) {
+            const batch_number = first_batch + batch_index;
+            var batch_inherents = self.client.getInherentsByBlockNumber(policy.getBlockNumberForBatch(batch_number), self.allocator) catch |err| {
+                std.log.err("Failed to get inherents for collection {d}, batch {d}: {}", .{ collection_number, batch_number, err });
+                return err;
+            };
+            defer batch_inherents.deinit();
+
+            inherent_loop: for (0..batch_inherents.result.len) |index| {
+                var inherent = batch_inherents.result[index];
+                if (!inherent.isReward()) {
+                    continue :inherent_loop;
+                }
+
+                if (inherent.validatorAddress == null) {
+                    continue :inherent_loop;
+                }
+
+                const validator_address = inherent.validatorAddress.?;
+                if (!std.mem.eql(u8, validator_address, self.cfg.validator_address)) {
+                    continue :inherent_loop;
+                }
+
+                if (inherent.value == null) {
+                    continue :inherent_loop;
+                }
+
+                reward += inherent.value.?;
+                continue :batch_loop;
+            }
+        }
+
+        std.log.info("Reward for collection {d} completed: {d}", .{ collection_number, reward });
     }
 };
 
 pub fn run(args: Args) !void {
-    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    // defer _ = gpa.deinit();
-    // const allocator = gpa.allocator();
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
 
-    // var client = http.Client{ .allocator = allocator };
-    // defer client.deinit();
-    // const uri = try std.Uri.parse(args.cfg.rpc_url);
-    // var jsonrpc_client = jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
+    var client = http.Client{ .allocator = allocator };
+    defer client.deinit();
+    const uri = try std.Uri.parse(args.cfg.rpc_url);
+    var jsonrpc_client = jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
 
     var sqlite_conn = try sqlite.open(args.cfg.sqlite_db_path);
-    var worker_process = Process{ .cfg = args.cfg, .queue = args.queue, .sqlite_conn = &sqlite_conn };
+    var worker_process = Process{ .cfg = args.cfg, .queue = args.queue, .sqlite_conn = &sqlite_conn, .client = &jsonrpc_client, .allocator = allocator };
     try worker_process.run();
 }

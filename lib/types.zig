@@ -6,18 +6,25 @@ pub const BlockType = enum { Election, Checkpoint, Micro };
 
 pub const Inherent = struct {
     const Self = @This();
-    type: []const u8,
+    type: []u8,
     blockNumber: u64,
     validatorAddress: ?[]u8 = null,
     target: ?[]u8 = null,
     value: ?u64 = null,
 
     pub fn isReward(self: Self) bool {
-        return std.mem.eql(u8, self.type, "reward");
+        if (self.type.len == 6) {
+            return (self.type[0] == 'r' and self.type[1] == 'e' and self.type[2] == 'w' and self.type[3] == 'a' and self.type[4] == 'r' and self.type[5] == 'd');
+        }
+
+        return false;
     }
 
     pub fn cloneArenaAlloc(self: Self, allocator: Allocator) !Self {
-        var new_inherent = Self{ .type = self.type, .blockNumber = self.blockNumber, .value = self.value };
+        const new_type = try allocator.alloc(u8, self.type.len);
+        @memcpy(new_type, self.type);
+
+        var new_inherent = Self{ .type = new_type, .blockNumber = self.blockNumber, .value = self.value };
 
         if (self.validatorAddress) |validator_address| {
             const new_address = try allocator.alloc(u8, validator_address.len);
@@ -36,7 +43,17 @@ pub const Inherent = struct {
 };
 
 test "inherent is reward" {
-    const test_inherent = Inherent{ .type = "reward", .blockNumber = 120 };
+    const allocator = testing.allocator;
+    const reward = try allocator.alloc(u8, 6);
+    defer allocator.free(reward);
+    reward[0] = 'r';
+    reward[1] = 'e';
+    reward[2] = 'w';
+    reward[3] = 'a';
+    reward[4] = 'r';
+    reward[5] = 'd';
+
+    const test_inherent = Inherent{ .type = reward, .blockNumber = 120 };
     try testing.expect(test_inherent.isReward());
 }
 

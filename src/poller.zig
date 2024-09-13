@@ -79,7 +79,7 @@ fn handleCheckpointBlock(self: *Self, height: u64) !void {
     const next_collection = current_collection + 1;
 
     if (policy.getCollectionFromBlockNumber(height + 1) == next_collection) {
-        std.log.info("a collection has been completed: {d}", .{current_collection});
+        std.log.debug("a collection has been completed: {d}", .{current_collection});
 
         const instruction = worker.Instruction{ .instruction_type = worker.InstructionType.Collection, .number = current_collection };
         try self.queue.add(instruction);
