@@ -22,7 +22,10 @@ queue: *worker.Queue,
 pub fn watchChainHeight(self: *Self) !void {
     var last_block: u64 = try querier.cursors.getLastPollerHeight(self.sqlite_conn);
     while (true) {
-        const block_number = try self.client.getBlockNumber();
+        const block_number = self.client.getBlockNumber() catch |err| {
+            std.log.err("error fetching block number: {}", .{err});
+            continue;
+        };
 
         if (last_block == 0) {
             last_block = block_number;
@@ -46,10 +49,10 @@ pub fn watchChainHeight(self: *Self) !void {
         };
 
         // TODO: remove this
-        // for now we stop after two epochs. This way the Zig memory debugger
+        // for now we stop after 14 batches. This way the Zig memory debugger
         // can catch any memory leaks we might have after running.
-        if (policy.getBatchFromBlockNumber(last_block) > 8) {
-            std.log.warn("REMOVE ME: early exit after batch 8", .{});
+        if (policy.getBatchFromBlockNumber(last_block) > 14) {
+            std.log.warn("REMOVE ME: early exit after batch 14", .{});
             return;
         }
     }
@@ -65,7 +68,7 @@ fn handleNewHeight(self: *Self, height: u64) !void {
             std.log.info("Election block passed. Block number {d}. Batch number {d}", .{ height, policy.getBatchFromBlockNumber(height) });
             try self.fetchValidatorDetails(height);
         },
-        BlockType.Micro => {},
+        BlockType.Micro => {}, // TODO: handle last micro block of an epoch,
     }
 }
 
@@ -84,6 +87,10 @@ fn handleCheckpointBlock(self: *Self, height: u64) !void {
 }
 
 fn fetchValidatorDetails(self: *Self, current_height: u64) !void {
+    // TODO:
+    // for genesis validators we have to get the first epoch from the genesis file
+    // we may skip this functionality for now since it is an advanced feature.
+
     const next_epoch_number = policy.getEpochFromBlockNumber(current_height) + 1;
     if (try querier.epochs.epochExists(self.sqlite_conn, next_epoch_number)) {
         std.log.warn("epoch {d} already handled", .{next_epoch_number});

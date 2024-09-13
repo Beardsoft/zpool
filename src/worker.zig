@@ -1,11 +1,14 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const Config = @import("config.zig");
 const http = std.http;
+
+const Config = @import("config.zig");
+const querier = @import("querier.zig");
 const sqlite = @import("sqlite.zig");
 
 const zpool = @import("zpool");
 const jsonrpc = zpool.jsonrpc;
+const policy = zpool.policy;
 
 pub const InstructionType = enum {
     Collection,
@@ -99,6 +102,7 @@ pub const Process = struct {
 
     queue: *Queue,
     cfg: *Config,
+    sqlite_conn: *sqlite.Conn,
 
     pub fn run(self: *Self) !void {
         std.log.info("started worker thread", .{});
@@ -121,8 +125,31 @@ pub const Process = struct {
         std.log.info("worker stopped", .{});
     }
 
-    fn handleInstruction(_: *Self, instruction: Instruction) !void {
-        std.log.info("got instruction: {}, {}", .{ instruction.instruction_type, instruction.number });
+    fn handleInstruction(self: *Self, instruction: Instruction) !void {
+        switch (instruction.instruction_type) {
+            InstructionType.Collection => try self.handleNewCollection(instruction.number),
+        }
+    }
+
+    fn handleNewCollection(self: *Self, collection_number: u64) !void {
+        const first_batch = policy.getFirstBatchFromCollection(collection_number);
+        const epoch_number = policy.getEpochFromBatchNumber(first_batch);
+
+        const epoch_status = querier.epochs.getEpochStatusByNumber(self.sqlite_conn, epoch_number) catch |err| {
+            if (err == querier.epochs.QueryError.NotFound) {
+                std.log.warn("collection passed for epoch {d}, but epoch is not found", .{epoch_number});
+                return;
+            }
+
+            std.log.err("error getting epoch status for epoch {d}: {}", .{ epoch_number, err });
+            return err;
+        };
+
+        if (epoch_status.isInvalid()) {
+            std.log.warn("collection passed for invalid epoch {d} with status {}. Ignoring collection", .{ epoch_number, epoch_status });
+        }
+
+        std.log.info("Collection {d} passed for epoch {d}. Fetching rewards.", .{ collection_number, epoch_number });
     }
 };
 
@@ -136,7 +163,7 @@ pub fn run(args: Args) !void {
     // const uri = try std.Uri.parse(args.cfg.rpc_url);
     // var jsonrpc_client = jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
 
-    // var sqlite_conn = try sqlite.open(args.cfg.sqlite_db_path);
-    var worker_process = Process{ .cfg = args.cfg, .queue = args.queue };
+    var sqlite_conn = try sqlite.open(args.cfg.sqlite_db_path);
+    var worker_process = Process{ .cfg = args.cfg, .queue = args.queue, .sqlite_conn = &sqlite_conn };
     try worker_process.run();
 }

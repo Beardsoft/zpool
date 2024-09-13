@@ -1,7 +1,44 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const testing = std.testing;
 
 pub const BlockType = enum { Election, Checkpoint, Micro };
+
+pub const Inherent = struct {
+    const Self = @This();
+    type: []const u8,
+    blockNumber: u64,
+    validatorAddress: ?[]u8 = null,
+    target: ?[]u8 = null,
+    value: ?u64 = null,
+
+    pub fn isReward(self: Self) bool {
+        return std.mem.eql(u8, self.type, "reward");
+    }
+
+    pub fn cloneArenaAlloc(self: Self, allocator: Allocator) !Self {
+        var new_inherent = Self{ .type = self.type, .blockNumber = self.blockNumber, .value = self.value };
+
+        if (self.validatorAddress) |validator_address| {
+            const new_address = try allocator.alloc(u8, validator_address.len);
+            @memcpy(new_address, validator_address);
+            new_inherent.validatorAddress = new_address;
+        }
+
+        if (self.target) |target_address| {
+            const new_address = try allocator.alloc(u8, target_address.len);
+            @memcpy(new_address, target_address);
+            new_inherent.target = new_address;
+        }
+
+        return new_inherent;
+    }
+};
+
+test "inherent is reward" {
+    const test_inherent = Inherent{ .type = "reward", .blockNumber = 120 };
+    try testing.expect(test_inherent.isReward());
+}
 
 /// Denotes a staker on the Nimiq network
 pub const Staker = struct {
