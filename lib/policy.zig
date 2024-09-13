@@ -12,6 +12,7 @@ pub const epoch_size = policy.epoch_size;
 pub const batches_per_epoch = policy.batches_per_epoch;
 pub const collection_batches = policy.collection_batches;
 pub const collection_size = policy.collection_size;
+pub const network_id: u8 = policy.network_id;
 
 pub fn getBlockNumberForBatch(batch_number: u64) u64 {
     return batch_number * batch_size + genesis_number;
