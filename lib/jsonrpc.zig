@@ -44,10 +44,10 @@ pub fn Response(comptime T: type) type {
     return struct {
         const Self = @This();
 
-        result: struct { data: T, metadata: ?struct {
+        result: ?struct { data: T, metadata: ?struct {
             blockNumber: u64,
             blockHash: []const u8,
-        } = null },
+        } = null } = null,
         @"error": ?ResponseError = null,
     };
 }
@@ -93,14 +93,17 @@ pub const Client = struct {
 
     /// `getBlockNumber` returns the current block height of the chain
     pub fn getBlockNumber(self: *Self) !u64 {
+        const params = try self.allocator.alloc(bool, 0);
+        defer self.allocator.free(params);
+
         const ReqType = Request([]bool);
-        var req = ReqType{ .method = "getBlockNumber" };
+        var req = ReqType{ .method = "getBlockNumber", .params = params };
 
         const ResponseType = Response(u64);
         const parsed = try self.send(&req, ResponseType);
         defer parsed.deinit();
 
-        return parsed.value.result.data;
+        return parsed.value.result.?.data;
     }
 
     /// `getValidatorByAddress` returns the given validator by address
@@ -118,10 +121,10 @@ pub const Client = struct {
 
         var arena = ArenaAllocator.init(allocator);
         const arena_allocator = arena.allocator();
-        const new_validator = try parsed.value.result.data.cloneArenaAlloc(arena_allocator);
+        const new_validator = try parsed.value.result.?.data.cloneArenaAlloc(arena_allocator);
 
         const EnvelopeType = Envelope(types.Validator);
-        const block_number: ?u64 = if (parsed.value.result.metadata) |meta| meta.blockNumber else null;
+        const block_number: ?u64 = if (parsed.value.result.?.metadata) |meta| meta.blockNumber else null;
         return EnvelopeType{ .block_number = block_number, .result = new_validator, .arena = arena };
     }
 
@@ -140,14 +143,14 @@ pub const Client = struct {
 
         var arena = ArenaAllocator.init(allocator);
         const arena_allocator = arena.allocator();
-        const stakers = try arena_allocator.alloc(types.Staker, parsed.value.result.data.len);
-        for (parsed.value.result.data, 0..) |staker, index| {
+        const stakers = try arena_allocator.alloc(types.Staker, parsed.value.result.?.data.len);
+        for (parsed.value.result.?.data, 0..) |staker, index| {
             const cloned = try staker.cloneArenaAlloc(arena_allocator);
             stakers[index] = cloned;
         }
 
         const EnvelopeType = Envelope([]types.Staker);
-        const block_number: ?u64 = if (parsed.value.result.metadata) |meta| meta.blockNumber else null;
+        const block_number: ?u64 = if (parsed.value.result.?.metadata) |meta| meta.blockNumber else null;
         return EnvelopeType{ .block_number = block_number, .result = stakers, .arena = arena };
     }
 
