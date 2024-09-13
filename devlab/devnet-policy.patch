@@ -10,6 +10,47 @@ index 9be15be53..a9627e2c2 100644
 +  "blocksPerEpoch": 240
  }
 \ No newline at end of file
+diff --git a/genesis/src/genesis/dev-albatross-4-validators.toml b/genesis/src/genesis/dev-albatross-4-validators.toml
+index fbc3b571d..c4b8b0b3d 100644
+--- a/genesis/src/genesis/dev-albatross-4-validators.toml
++++ b/genesis/src/genesis/dev-albatross-4-validators.toml
+@@ -89,6 +89,36 @@ staker_address = "NQ64 VP65 7809 JC9D X4XP QDRU KYTN 79JN 46A5"
+ balance = 1_000_00000
+ delegation = "NQ83 BPY4 JPJH 5B1Y NYKQ 32V1 84L4 YU35 1VTL"
+ 
++[[stakers]]
++staker_address = "NQ69 F067 AXJ7 TJTE 3J80 5GCY 6CMX 1FEK 6MCR"
++balance = 10000000
++delegation = "NQ20 TSB0 DFSM UH9C 15GQ GAGJ TTE4 D3MA 859E"
++inactive_balance = 0
++
++[[stakers]]
++staker_address = "NQ49 EASY CBKX 3LYM 1YY2 DSL7 L8XR DHBJ NGVL"
++balance = 111369400000
++delegation = "NQ20 TSB0 DFSM UH9C 15GQ GAGJ TTE4 D3MA 859E"
++inactive_balance = 0
++
++[[stakers]]
++staker_address = "NQ38 8S48 6YSG CUED L6D6 F16T 7NHR 1C42 7XAX"
++balance = 1000000000
++delegation = "NQ20 TSB0 DFSM UH9C 15GQ GAGJ TTE4 D3MA 859E"
++inactive_balance = 0
++
++[[stakers]]
++staker_address = "NQ79 3E8M NKXN 8YUD R9C2 EY4E 23N9 4L5K 62QS"
++balance = 1178400000
++delegation = "NQ20 TSB0 DFSM UH9C 15GQ GAGJ TTE4 D3MA 859E"
++inactive_balance = 0
++
++[[stakers]]
++staker_address = "NQ48 XNXR J3D5 CVYG 0UPC PTRX AP56 V16T PTA1"
++balance = 995200000
++delegation = "NQ20 TSB0 DFSM UH9C 15GQ GAGJ TTE4 D3MA 859E"
++inactive_balance = 0
++
+ [[basic_accounts]]
+ address = "NQ55 X103 EJXG 3S2U 3JNE L779 560T 3LNE 7S60"
+ # private_key = "a24591648e20642fe5107d0285c1cc35d67e2033a92566f1217fbd3a14e07abc"
 diff --git a/primitives/src/policy.rs b/primitives/src/policy.rs
 index c9c2dd24e..ec1d23e3b 100644
 --- a/primitives/src/policy.rs
