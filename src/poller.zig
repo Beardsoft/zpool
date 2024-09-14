@@ -4,7 +4,7 @@ const Allocator = std.mem.Allocator;
 const Config = @import("config.zig");
 const querier = @import("querier.zig");
 const sqlite = @import("sqlite.zig");
-const worker = @import("worker.zig");
+const Queue = @import("queue.zig");
 
 const zpool = @import("zpool");
 const BlockType = zpool.types.BlockType;
@@ -17,11 +17,11 @@ client: *jsonrpc.Client,
 cfg: *Config,
 allocator: Allocator,
 sqlite_conn: *sqlite.Conn,
-queue: *worker.Queue,
+queue: *Queue,
 
 pub fn watchChainHeight(self: *Self) !void {
     var last_block: u64 = try querier.cursors.getLastPollerHeight(self.sqlite_conn);
-    while (true) {
+    while (!self.queue.isClosed()) {
         const block_number = self.client.getBlockNumber() catch |err| {
             std.log.err("error fetching block number: {}", .{err});
             continue;
@@ -47,14 +47,6 @@ pub fn watchChainHeight(self: *Self) !void {
             std.log.err("failed to upsert height: {}", .{err});
             return err;
         };
-
-        // TODO: remove this
-        // for now we stop after 14 batches. This way the Zig memory debugger
-        // can catch any memory leaks we might have after running.
-        if (policy.getBatchFromBlockNumber(last_block) > 14) {
-            std.log.warn("REMOVE ME: early exit after batch 14", .{});
-            return;
-        }
     }
 }
 
@@ -81,7 +73,7 @@ fn handleCheckpointBlock(self: *Self, height: u64) !void {
     if (policy.getCollectionFromBlockNumber(height + 1) == next_collection) {
         std.log.debug("a collection has been completed: {d}", .{current_collection});
 
-        const instruction = worker.Instruction{ .instruction_type = worker.InstructionType.Collection, .number = current_collection };
+        const instruction = Queue.Instruction{ .instruction_type = Queue.InstructionType.Collection, .number = current_collection };
         try self.queue.add(instruction);
     }
 }

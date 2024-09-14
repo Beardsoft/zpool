@@ -1,11 +1,13 @@
 const std = @import("std");
 const http = std.http;
+const posix = std.posix;
 const testing = std.testing;
 
 const Config = @import("config.zig");
 const poller = @import("poller.zig");
 const querier = @import("querier.zig");
 const sqlite = @import("sqlite.zig");
+const Queue = @import("queue.zig");
 const worker = @import("worker.zig");
 
 const zpool = @import("zpool");
@@ -26,11 +28,14 @@ pub fn main() !void {
     var cfg = Config{};
 
     // Worker setup
-    var worker_queue = worker.Queue{ .allocator = allocator };
+    var worker_queue = Queue{ .allocator = allocator };
     const worker_args = worker.Args{ .queue = &worker_queue, .cfg = &cfg };
     const worker_thread = try std.Thread.spawn(.{}, worker.run, .{worker_args});
     defer worker_thread.join();
-    defer worker_queue.close(); // this order is important. Since defer are executed LIFO order, the thread only stops when queue is closed so must be called after Thread.join() so it is executed first. Still following? Good boy!
+    defer worker_queue.close();
+
+    const sig_handler = posix.Sigaction{ .mask = posix.empty_sigset, .flags = 0, .handler = .{ .handler = Queue.signalHandler } };
+    try posix.sigaction(posix.SIG.INT, &sig_handler, null);
 
     // Main thread setup
     var client = http.Client{ .allocator = allocator };
@@ -49,7 +54,6 @@ pub fn main() !void {
     var new_poller = poller{ .cfg = &cfg, .client = &jsonrpc_client, .allocator = allocator, .sqlite_conn = &sqlite_conn, .queue = &worker_queue };
     new_poller.watchChainHeight() catch |err| {
         std.log.err("error on watching chain height: {}", .{err});
-        std.posix.exit(1);
     };
 }
 
