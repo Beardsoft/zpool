@@ -7,32 +7,20 @@ const querier = @import("querier.zig");
 const Queue = @import("queue.zig");
 const sqlite = @import("sqlite.zig");
 
+const zbackoff = @import("zbackoff");
+
 const zpool = @import("zpool");
 const jsonrpc = zpool.jsonrpc;
 const policy = zpool.policy;
-
-pub const Timer = struct {
-    const Self = @This();
-
-    time_ms: i64,
-
-    pub fn new() Timer {
-        return .{ .time_ms = std.time.milliTimestamp() };
-    }
-
-    pub fn hasPassedDuration(self: Self, duration: i64) bool {
-        const current_time = std.time.milliTimestamp();
-        return (current_time - self.time_ms) > duration;
-    }
-
-    pub fn reset(self: *Self) void {
-        self.time_ms = std.time.milliTimestamp();
-    }
-};
+const types = zpool.types;
 
 pub const Args = struct {
     queue: *Queue,
     cfg: *Config,
+};
+
+pub const WorkerError = error{
+    InherentFailed,
 };
 
 pub fn run(args: Args) !void {
@@ -110,10 +98,28 @@ pub const Process = struct {
         // TODO: double check this includes all batches
         batch_loop: while (batch_index < policy.collection_batches) : (batch_index += 1) {
             const batch_number = first_batch + batch_index;
-            var batch_inherents = self.client.getInherentsByBlockNumber(policy.getBlockNumberForBatch(batch_number), self.allocator) catch |err| {
-                std.log.err("Failed to get inherents for collection {d}, batch {d}: {}", .{ collection_number, batch_number, err });
-                return err;
-            };
+
+            var backoff = zbackoff.Backoff{};
+            var batch_inherents: jsonrpc.Envelope([]types.Inherent) = undefined;
+            var success = false;
+
+            retry_loop: for (0..3) |_| {
+                const result = self.client.getInherentsByBlockNumber(policy.getBlockNumberForBatch(batch_number), self.allocator) catch |err| {
+                    std.log.debug("Failed to get inherents for collection {d}, batch {d}: {}. Attempting retry", .{ collection_number, batch_number, err });
+                    std.time.sleep(backoff.pause());
+                    continue :retry_loop;
+                };
+
+                batch_inherents = result;
+                success = true;
+                break;
+            }
+
+            if (!success) {
+                std.log.err("Failed to get inherents for collection {d}, batch {d}", .{ collection_number, batch_number });
+                return WorkerError.InherentFailed;
+            }
+
             defer batch_inherents.deinit();
 
             inherent_loop: for (0..batch_inherents.result.len) |index| {

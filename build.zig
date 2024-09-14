@@ -61,7 +61,10 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const zbackoff = b.dependency("zbackoff", .{}).module("zbackoff");
+
     exe.root_module.addImport("zpool", zpool);
+    exe.root_module.addImport("zbackoff", zbackoff);
     exe.linkSystemLibrary("sqlite3");
     exe.linkLibC();
 
