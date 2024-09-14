@@ -36,6 +36,8 @@ pub fn main() !void {
 
     const sig_handler = posix.Sigaction{ .mask = posix.empty_sigset, .flags = 0, .handler = .{ .handler = Queue.signalHandler } };
     try posix.sigaction(posix.SIG.INT, &sig_handler, null);
+    posix.sigaction(posix.SIG.KILL, &sig_handler, null) catch {};
+    try posix.sigaction(posix.SIG.TERM, &sig_handler, null);
 
     // Main thread setup
     var client = http.Client{ .allocator = allocator };

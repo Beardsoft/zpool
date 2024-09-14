@@ -64,14 +64,16 @@ const migration_version_0 =
     \\);
     \\
     \\INSERT INTO statuses(id, status) VALUES 
-    \\    (1, "NOT_ELECTED"),
-    \\    (2, "IN_PROGRESS"),
-    \\    (3, "RETIRED"),
-    \\    (4, "INACTIVE"),
-    \\    (5, "ERROR"),
+    \\    (0, "NOT_ELECTED"),
+    \\    (1, "NO_STAKERS"),
+    \\    (2, "RETIRED"),
+    \\    (3, "INACTIVE"),
+    \\    (4, "ERROR"),
+    \\    (5, "IN_PROGRESS"),
     \\    (6, "COMPLETED"),
     \\    (7, "PENDING"),
-    \\    (8, "OUT_FOR_PAYMENT");
+    \\    (8, "OUT_FOR_PAYMENT"),
+    \\    (9, "AWAITING_CONFIRMATION");
     \\
     \\CREATE TABLE IF NOT EXISTS epochs(
     \\    number INTEGER NOT NULL PRIMARY KEY,

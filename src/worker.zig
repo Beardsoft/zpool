@@ -23,6 +23,8 @@ pub const WorkerError = error{
     InherentFailed,
 };
 
+/// run starts the worker process. The worker process is meant to be run
+/// on a separate Thread.
 pub fn run(args: Args) !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -103,6 +105,9 @@ pub const Process = struct {
             var batch_inherents: jsonrpc.Envelope([]types.Inherent) = undefined;
             var success = false;
 
+            // Because this Thread only occasionly does HTTP requests the underlying connection could be closed
+            // we therefore employ retries.
+            // related: https://github.com/ziglang/zig/issues/19165
             retry_loop: for (0..3) |_| {
                 const result = self.client.getInherentsByBlockNumber(policy.getBlockNumberForBatch(batch_number), self.allocator) catch |err| {
                     std.log.debug("Failed to get inherents for collection {d}, batch {d}: {}. Attempting retry", .{ collection_number, batch_number, err });
@@ -163,8 +168,7 @@ pub const Process = struct {
             const staker_reward: u64 = @intFromFloat(@as(f64, @floatFromInt(reward)) / 100.00 * staker.stake_percentage);
             std.log.info("Staker {s} is owed {d} for collection {d}", .{ staker.address, staker_reward, collection_number });
 
-            // TODO:
-            // store payslip
+            try querier.payslips.insertNewPayslip(self.sqlite_conn, collection_number, staker.address, staker_reward, querier.statuses.Status.Pending);
         }
     }
 };

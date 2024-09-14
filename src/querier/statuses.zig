@@ -5,16 +5,18 @@ pub const Status = enum(u8) {
     const Self = @This();
 
     NotElected,
-    InProgress,
+    NoStakers,
     Retired,
     InActive,
     Error,
+    InProgress,
     Completed,
     Pending,
     OutForPayment,
+    AwaitingConfirmation,
 
     pub fn isInvalid(self: Self) bool {
-        return (self == Status.NotElected or self == Status.Retired or self == Status.InActive or self == Status.Error);
+        return (self == Status.NotElected or self == Status.NoStakers or self == Status.Retired or self == Status.InActive or self == Status.Error);
     }
 };
 

@@ -10,13 +10,15 @@ CREATE TABLE IF NOT EXISTS statuses(
 
 INSERT INTO statuses(id, status) VALUES 
     (0, "NOT_ELECTED"),
-    (1, "IN_PROGRESS"),
+    (1, "NO_STAKERS"),
     (2, "RETIRED"),
     (3, "INACTIVE"),
     (4, "ERROR"),
-    (5, "COMPLETED"),
-    (6, "PENDING"),
-    (7, "OUT_FOR_PAYMENT");
+    (5, "IN_PROGRESS"),
+    (6, "COMPLETED"),
+    (7, "PENDING"),
+    (8, "OUT_FOR_PAYMENT"),
+    (9, "AWAITING_CONFIRMATION");
 
 CREATE TABLE IF NOT EXISTS epochs(
     number INTEGER NOT NULL PRIMARY KEY,

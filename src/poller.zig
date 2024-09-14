@@ -10,6 +10,7 @@ const zpool = @import("zpool");
 const BlockType = zpool.types.BlockType;
 const jsonrpc = zpool.jsonrpc;
 const policy = zpool.policy;
+const types = zpool.types;
 
 const Self = @This();
 
@@ -19,6 +20,9 @@ allocator: Allocator,
 sqlite_conn: *sqlite.Conn,
 queue: *Queue,
 
+/// This function is the main poller loop. The poller runs on the main
+/// thread and is intended for critical path operations. Other operations
+/// are executed by the worker instead on a separate thread.
 pub fn watchChainHeight(self: *Self) !void {
     var last_block: u64 = try querier.cursors.getLastPollerHeight(self.sqlite_conn);
     while (!self.queue.isClosed()) {
@@ -27,6 +31,8 @@ pub fn watchChainHeight(self: *Self) !void {
             continue;
         };
 
+        // TODO: in case of a genesis validator this must be changed
+        // to start from genesis number instead of the current height
         if (last_block == 0) {
             last_block = block_number;
             continue;
@@ -53,7 +59,6 @@ pub fn watchChainHeight(self: *Self) !void {
 fn handleNewHeight(self: *Self, height: u64) !void {
     switch (policy.getBlockTypeByBlockNumber(height)) {
         BlockType.Checkpoint => {
-            std.log.debug("Checkpoint block passed. Block number {d}. Batch number {d}", .{ height, policy.getBatchFromBlockNumber(height) });
             try self.handleCheckpointBlock(height);
         },
         BlockType.Election => {
@@ -64,6 +69,10 @@ fn handleNewHeight(self: *Self, height: u64) !void {
     }
 }
 
+/// this is called for all checkpoint blocks. We bundle batches in collections
+/// of multiple batches. Only when a full collection is completed we pass
+/// along work to the worker thread to fetch rewards for all batches
+/// in the collection.
 fn handleCheckpointBlock(self: *Self, height: u64) !void {
     const current_collection = policy.getCollectionFromBlockNumber(height);
     if (current_collection == 0) return;
@@ -71,8 +80,6 @@ fn handleCheckpointBlock(self: *Self, height: u64) !void {
     const next_collection = current_collection + 1;
 
     if (policy.getCollectionFromBlockNumber(height + 1) == next_collection) {
-        std.log.debug("a collection has been completed: {d}", .{current_collection});
-
         const instruction = Queue.Instruction{ .instruction_type = Queue.InstructionType.Collection, .number = current_collection };
         try self.queue.add(instruction);
     }
@@ -96,21 +103,34 @@ fn fetchValidatorDetails(self: *Self, current_height: u64) !void {
     // validate staker contract window here
 
     const validator = response.result;
-
-    if (!validator.isActive(current_height)) {
-        std.log.err("Validator is not active, skipping epoch", .{});
+    const validator_status = validator.getStatus(current_height);
+    if (validator_status != types.ValidatorStatus.Active) {
+        try self.skipValidatorWithInvalidStatus(next_epoch_number, getSchemaStatusFromValidatorStatus(validator_status));
         return;
     }
 
-    // TODO:
-    // validator status could also be that there are no stakers at all. In which case
-    // we don't have to do anything as a pool. We have to introduce a separate status for this.
+    if (validator.numStakers == 0) {
+        try self.skipValidatorWithInvalidStatus(next_epoch_number, querier.statuses.Status.NoStakers);
+        return;
+    }
 
     std.log.info("Validator is elected. Balance {d}. Num stakers: {d}", .{ validator.balance, validator.numStakers });
     try querier.epochs.insertNewEpoch(self.sqlite_conn, next_epoch_number, validator.numStakers, validator.balance, querier.statuses.Status.InProgress);
-    if (validator.numStakers > 0) {
-        try self.fetchValidatorStakers(validator.balance, next_epoch_number);
-    }
+    try self.fetchValidatorStakers(validator.balance, next_epoch_number);
+}
+
+fn getSchemaStatusFromValidatorStatus(status: types.ValidatorStatus) querier.statuses.Status {
+    return switch (status) {
+        types.ValidatorStatus.Inactive => querier.statuses.Status.InActive,
+        types.ValidatorStatus.Retired => querier.statuses.Status.Retired,
+        types.ValidatorStatus.Jailed => querier.statuses.Status.InActive, // TODO: have a separate type for this
+        types.ValidatorStatus.Active => querier.statuses.Status.InProgress,
+    };
+}
+
+fn skipValidatorWithInvalidStatus(self: *Self, epoch_number: u64, status: querier.statuses.Status) !void {
+    std.log.info("Skipping epoch {d} with validator status {}", .{ epoch_number, status });
+    try querier.epochs.insertNewEpoch(self.sqlite_conn, epoch_number, 0, 0, status);
 }
 
 fn fetchValidatorStakers(self: *Self, validator_balance: u64, epoch_number: u64) !void {
@@ -123,9 +143,6 @@ fn fetchValidatorStakers(self: *Self, validator_balance: u64, epoch_number: u64)
     for (response.result) |staker| {
         if (staker.balance == 0) continue;
 
-        // TODO:
-        // precision may be lost here. We might need to use a more specific type to handle this
-        // but we can do that later.
         const stake = @as(f64, @floatFromInt(staker.balance)) * 100 / @as(f64, @floatFromInt(validator_balance));
 
         std.log.info("Staker with address {s} has stake of {d:.5} with balance {d}", .{ staker.address, stake, staker.balance });
