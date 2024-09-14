@@ -27,6 +27,10 @@
             .url = "https://github.com/flowerinthenight/zbackoff/archive/refs/tags/v0.1.0.tar.gz",
             .hash = "1220d916c94ec121cbad861f1fcab113a25c4590466d29319996cfba2a663008c5fd",
         },
+        .base32 = .{
+            .url = "https://github.com/gernest/base32/archive/refs/tags/v0.2.0.tar.gz",
+            .hash = "1220335dd324d6eedb7b41b5fccb7f1708e4fd39d5286c09d25b3de3f00983a24fc0",
+        },
     },
     .paths = .{
         "build.zig",

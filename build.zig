@@ -21,6 +21,10 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
+    // dependencies
+    const base32 = b.dependency("base32", .{}).module("base32");
+    const zbackoff = b.dependency("zbackoff", .{}).module("zbackoff");
+
     // Nimiq networks can have different constants altering core logic of the pool
     // we expose the 'policy' option to allow overwriting policy constants for the
     // correct ntwork.
@@ -42,11 +46,13 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    lib.root_module.addImport("base32", base32);
     lib.root_module.addImport("policy", policy);
 
     const zpool = b.addModule("zpool", .{
         .root_source_file = b.path("lib/lib.zig"),
     });
+    zpool.addImport("base32", base32);
     zpool.addImport("policy", policy);
 
     // This declares intent for the library to be installed into the standard
@@ -60,8 +66,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-
-    const zbackoff = b.dependency("zbackoff", .{}).module("zbackoff");
 
     exe.root_module.addImport("zpool", zpool);
     exe.root_module.addImport("zbackoff", zbackoff);
@@ -104,6 +108,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    lib_unit_tests.root_module.addImport("base32", base32);
     lib_unit_tests.root_module.addImport("policy", policy);
 
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
@@ -114,6 +119,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    exe_unit_tests.root_module.addImport("zbackoff", zbackoff);
     exe_unit_tests.root_module.addImport("zpool", zpool);
     exe_unit_tests.linkSystemLibrary("sqlite3");
     exe_unit_tests.linkLibC();
