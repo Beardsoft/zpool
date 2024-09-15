@@ -27,7 +27,7 @@ const Self = @This();
 
 /// Address holds the raw bytes of a Nimiq address
 /// the address can either be parsed from hex or the friendly address format
-bytes: [address_length]u8,
+bytes: [address_length]u8 = undefined,
 
 /// Parse address from hex string
 pub fn parseAddressFromHex(self: *Self, hex: []const u8) !void {
@@ -61,11 +61,7 @@ pub fn parseAddressFromFriendly(self: *Self, friendly: []const u8) !void {
 var test_address = Self{ .bytes = [20]u8{ 0x93, 0xef, 0x3e, 0x94, 0x5f, 0x99, 0xcf, 0x64, 0x3f, 0x26, 0xa2, 0x58, 0xa2, 0x88, 0x32, 0xf8, 0x98, 0xed, 0xa4, 0x96 } };
 
 test "Parse address from hex: invalid length" {
-    const allocator = testing.allocator;
-
-    var address = try allocator.create(Self);
-    defer allocator.destroy(address);
-
+    var address = Self{};
     const result = address.parseAddressFromHex("0016");
     try testing.expectError(InvalidAddressError.InvalidLength, result);
 }

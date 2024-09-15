@@ -1,15 +1,18 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const Ed25519 = std.crypto.sign.Ed25519;
 const http = std.http;
 
 const Config = @import("config.zig");
 const querier = @import("querier.zig");
 const Queue = @import("queue.zig");
 const sqlite = @import("sqlite.zig");
+const timer = @import("timer.zig");
 
 const zbackoff = @import("zbackoff");
 
 const zpool = @import("zpool");
+const Address = zpool.address;
 const jsonrpc = zpool.jsonrpc;
 const policy = zpool.policy;
 const types = zpool.types;
@@ -43,6 +46,8 @@ pub fn run(args: Args) !void {
 pub const Process = struct {
     const Self = @This();
 
+    reward_address: Address = Address{},
+    reward_address_key_pair: Ed25519.KeyPair = undefined,
     queue: *Queue,
     cfg: *Config,
     client: *jsonrpc.Client,
@@ -52,11 +57,30 @@ pub const Process = struct {
     pub fn run(self: *Self) !void {
         std.log.info("started worker thread", .{});
 
+        try self.reward_address.parseAddressFromFriendly(self.cfg.reward_address);
+
+        var private_key_raw = try self.allocator.alloc(u8, self.cfg.reward_address_secret_key.len / 2);
+        defer self.allocator.free(private_key_raw);
+        private_key_raw = try std.fmt.hexToBytes(private_key_raw, self.cfg.reward_address_secret_key[0..]);
+
+        var private_key_seed = [_]u8{0} ** 32;
+        @memcpy(&private_key_seed, private_key_raw);
+
+        self.reward_address_key_pair = try Ed25519.KeyPair.create(private_key_seed);
+
+        var scheduled_task_tracker = timer.new();
+
         while (!self.queue.isClosed()) {
             while (self.queue.hasInstructions()) {
                 if (try self.queue.get()) |instruction| {
                     try self.handleInstruction(instruction);
                 }
+            }
+
+            if (scheduled_task_tracker.hasPassedDuration(std.time.ms_per_s * 300)) {
+                scheduled_task_tracker.reset();
+
+                try self.executePendingPayments();
             }
 
             std.time.sleep(2 * std.time.ns_per_s);
@@ -154,6 +178,10 @@ pub const Process = struct {
         std.log.info("Reward for collection {d} completed: {d}", .{ collection_number, reward });
 
         // TODO:
+        // depending on the slots of the validator the rewards could be 0
+        // this should be handled here
+
+        // TODO:
         // the reward and pool fee does not consider the stake of the validator itself
         // we could theoretically consider this pool fee as well, but we can also leave it as is
         const pool_fee = reward / 100 * self.cfg.pool_fee_percentage;
@@ -169,6 +197,15 @@ pub const Process = struct {
             std.log.info("Staker {s} is owed {d} for collection {d}", .{ staker.address, staker_reward, collection_number });
 
             try querier.payslips.insertNewPayslip(self.sqlite_conn, collection_number, staker.address, staker_reward, querier.statuses.Status.Pending);
+        }
+    }
+
+    fn executePendingPayments(self: *Self) !void {
+        const pending_payments = try querier.payslips.getPendingHigherThanMinPayout(self.sqlite_conn, self.allocator);
+        defer pending_payments.deinit();
+
+        for (pending_payments.data) |pending_payment| {
+            std.log.info("Staker {s} will receive {d}", .{ pending_payment.address, pending_payment.amount });
         }
     }
 };

@@ -2,7 +2,11 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const testing = std.testing;
 
+pub const AccountType = enum(u8) { Basic, Vesting, HTLC, Staking };
+
 pub const BlockType = enum { Election, Checkpoint, Micro };
+
+pub const TransactionType = enum(u8) { Basic, Extended };
 
 pub const Inherent = struct {
     const Self = @This();
