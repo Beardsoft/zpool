@@ -92,14 +92,14 @@ pub const Client = struct {
     uri: Uri,
 
     /// `getBlockNumber` returns the current block height of the chain
-    pub fn getBlockNumber(self: *Self) !u64 {
+    pub fn getBlockNumber(self: *Self) !u32 {
         const params = try self.allocator.alloc(bool, 0);
         defer self.allocator.free(params);
 
         const ReqType = Request([]bool);
         var req = ReqType{ .method = "getBlockNumber", .params = params };
 
-        const ResponseType = Response(u64);
+        const ResponseType = Response(u32);
         const parsed = try self.send(&req, ResponseType);
         defer parsed.deinit();
 

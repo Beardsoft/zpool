@@ -14,46 +14,46 @@ pub const collection_batches = policy.collection_batches;
 pub const collection_size = policy.collection_size;
 pub const network_id: u8 = policy.network_id;
 
-pub fn getBlockNumberForBatch(batch_number: u64) u64 {
+pub fn getBlockNumberForBatch(batch_number: u32) u32 {
     return batch_number * batch_size + genesis_number;
 }
 
-pub fn getBlockNumberForEpoch(epoch_number: u64) u64 {
+pub fn getBlockNumberForEpoch(epoch_number: u32) u32 {
     return epoch_number * epoch_size + genesis_number;
 }
 
-pub fn getBatchFromBlockNumber(block_number: u64) u64 {
+pub fn getBatchFromBlockNumber(block_number: u32) u32 {
     return calculateSizeForBlock(block_number, batch_size);
 }
 
-pub fn getCollectionFromBlockNumber(block_number: u64) u64 {
+pub fn getCollectionFromBlockNumber(block_number: u32) u32 {
     if (block_number < batch_size) return 0;
     return calculateSizeForBlock(block_number - batch_size, collection_size);
 }
 
-pub fn getCollectionFromBatchNumber(batch_number: u64) u64 {
+pub fn getCollectionFromBatchNumber(batch_number: u32) u32 {
     return getCollectionFromBlockNumber(getBlockNumberForBatch(batch_number));
 }
 
-pub fn getFirstBatchFromCollection(collection_number: u64) u64 {
+pub fn getFirstBatchFromCollection(collection_number: u32) u32 {
     const block_number = ((collection_number - 1) * collection_size) + batch_size + 1 + genesis_number;
     return getBatchFromBlockNumber(block_number);
 }
 
-pub fn getEpochFromBatchNumber(batch_number: u64) u64 {
+pub fn getEpochFromBatchNumber(batch_number: u32) u32 {
     return calculateSizeForBlock(getBlockNumberForBatch(batch_number), epoch_size);
 }
 
-pub fn getEpochFromBlockNumber(block_number: u64) u64 {
+pub fn getEpochFromBlockNumber(block_number: u32) u32 {
     return calculateSizeForBlock(block_number, epoch_size);
 }
 
-fn calculateSizeForBlock(block_number: u64, size: comptime_int) u64 {
+fn calculateSizeForBlock(block_number: u32, size: comptime_int) u32 {
     const number = block_number - genesis_number;
     return @intFromFloat(math.ceil(@as(f64, @floatFromInt(number)) / size));
 }
 
-pub fn getBlockTypeByBlockNumber(block_number: u64) BlockType {
+pub fn getBlockTypeByBlockNumber(block_number: u32) BlockType {
     const number = block_number - genesis_number;
 
     if (@rem(number, batch_size) == 0 and @rem(number, epoch_size) == 0) {

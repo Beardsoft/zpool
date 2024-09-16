@@ -5,7 +5,7 @@ pub const InstructionType = enum {
     Collection,
 };
 
-pub const Instruction = struct { instruction_type: InstructionType, number: u64 };
+pub const Instruction = struct { instruction_type: InstructionType, number: u32 };
 
 const QueueType = std.DoublyLinkedList(Instruction);
 

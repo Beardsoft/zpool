@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const cache = @import("cache.zig");
 const Config = @import("config.zig");
 const querier = @import("querier.zig");
 const sqlite = @import("sqlite.zig");
@@ -24,7 +25,7 @@ queue: *Queue,
 /// thread and is intended for critical path operations. Other operations
 /// are executed by the worker instead on a separate thread.
 pub fn watchChainHeight(self: *Self) !void {
-    var last_block: u64 = try querier.cursors.getLastPollerHeight(self.sqlite_conn);
+    var last_block = try querier.cursors.getLastPollerHeight(self.sqlite_conn);
     while (!self.queue.isClosed()) {
         const block_number = self.client.getBlockNumber() catch |err| {
             std.log.err("error fetching block number: {}", .{err});
@@ -43,6 +44,11 @@ pub fn watchChainHeight(self: *Self) !void {
             continue;
         }
 
+        // we atomically store the block number so that other threads
+        // requiring the latest block number don't have to get this from the
+        // node.
+        cache.block_number_store(block_number);
+
         // TODO: this should be ranged in reverse
         // we care about the highest height the most
         while (last_block < block_number) : (last_block += 1) {
@@ -56,7 +62,7 @@ pub fn watchChainHeight(self: *Self) !void {
     }
 }
 
-fn handleNewHeight(self: *Self, height: u64) !void {
+fn handleNewHeight(self: *Self, height: u32) !void {
     switch (policy.getBlockTypeByBlockNumber(height)) {
         BlockType.Checkpoint => {
             try self.handleCheckpointBlock(height);
@@ -73,7 +79,7 @@ fn handleNewHeight(self: *Self, height: u64) !void {
 /// of multiple batches. Only when a full collection is completed we pass
 /// along work to the worker thread to fetch rewards for all batches
 /// in the collection.
-fn handleCheckpointBlock(self: *Self, height: u64) !void {
+fn handleCheckpointBlock(self: *Self, height: u32) !void {
     const current_collection = policy.getCollectionFromBlockNumber(height);
     if (current_collection == 0) return;
 
@@ -85,7 +91,7 @@ fn handleCheckpointBlock(self: *Self, height: u64) !void {
     }
 }
 
-fn fetchValidatorDetails(self: *Self, current_height: u64) !void {
+fn fetchValidatorDetails(self: *Self, current_height: u32) !void {
     // TODO:
     // for genesis validators we have to get the first epoch from the genesis file
     // we may skip this functionality for now since it is an advanced feature.
@@ -128,12 +134,12 @@ fn getSchemaStatusFromValidatorStatus(status: types.ValidatorStatus) querier.sta
     };
 }
 
-fn skipValidatorWithInvalidStatus(self: *Self, epoch_number: u64, status: querier.statuses.Status) !void {
+fn skipValidatorWithInvalidStatus(self: *Self, epoch_number: u32, status: querier.statuses.Status) !void {
     std.log.info("Skipping epoch {d} with validator status {}", .{ epoch_number, status });
     try querier.epochs.insertNewEpoch(self.sqlite_conn, epoch_number, 0, 0, status);
 }
 
-fn fetchValidatorStakers(self: *Self, validator_balance: u64, epoch_number: u64) !void {
+fn fetchValidatorStakers(self: *Self, validator_balance: u64, epoch_number: u32) !void {
     var response = try self.client.getStakersByValidatorAddress(self.cfg.validator_address, self.allocator);
     defer response.deinit();
 

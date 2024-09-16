@@ -95,7 +95,7 @@ pub const Process = struct {
         }
     }
 
-    fn handleNewCollection(self: *Self, collection_number: u64) !void {
+    fn handleNewCollection(self: *Self, collection_number: u32) !void {
         const first_batch = policy.getFirstBatchFromCollection(collection_number);
         const epoch_number = policy.getEpochFromBatchNumber(first_batch);
 
@@ -119,7 +119,7 @@ pub const Process = struct {
         std.log.info("Collection {d} passed for epoch {d}. Fetching rewards.", .{ collection_number, epoch_number });
 
         var reward: u64 = 0;
-        var batch_index: u64 = 0;
+        var batch_index: u32 = 0;
 
         // TODO: double check this includes all batches
         batch_loop: while (batch_index < policy.collection_batches) : (batch_index += 1) {
