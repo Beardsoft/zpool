@@ -4,6 +4,7 @@ const Ed25519 = std.crypto.sign.Ed25519;
 const http = std.http;
 
 const Config = @import("config.zig");
+const cache = @import("cache.zig");
 const querier = @import("querier.zig");
 const Queue = @import("queue.zig");
 const sqlite = @import("sqlite.zig");
@@ -15,6 +16,7 @@ const zpool = @import("zpool");
 const Address = zpool.address;
 const jsonrpc = zpool.jsonrpc;
 const policy = zpool.policy;
+const Builder = zpool.transaction_builder.Builder;
 const types = zpool.types;
 
 pub const Args = struct {
@@ -205,7 +207,23 @@ pub const Process = struct {
         defer pending_payments.deinit();
 
         for (pending_payments.data) |pending_payment| {
-            std.log.info("Staker {s} will receive {d}", .{ pending_payment.address, pending_payment.amount });
+            var recipient_address = Address{};
+            try recipient_address.parseAddressFromFriendly(pending_payment.address);
+
+            // TODO: update to add stake transaction
+            // for testing purposes doing a basic transaction is easiest, but this should be add stake instead.
+            var tx_builder = Builder.newBasic(self.allocator, self.reward_address, recipient_address, pending_payment.amount, cache.block_number_get());
+            tx_builder.setFeeByByteSize();
+            const raw_tx_hex = try tx_builder.signAndCompile(self.allocator, self.reward_address_key_pair);
+            defer self.allocator.free(raw_tx_hex);
+
+            const tx_hash = try self.client.sendRawTransaction(raw_tx_hex, self.allocator);
+            defer self.allocator.free(tx_hash);
+
+            // TODO: store transaction
+            // TODO: update related payslip
+
+            std.log.info("Staker {s} will receive {d}. Tx hash: {s}", .{ pending_payment.address, pending_payment.amount, tx_hash });
         }
     }
 };

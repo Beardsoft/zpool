@@ -44,13 +44,13 @@ pub const Builder = struct {
                 self.fee = 3 + 64 + 32 + 20 + 8 + 8 + 4;
             },
             types.TransactionType.Extended => {
-                var fee = 3 + 24 + 24 + 98 + 8 + 8 + 4;
+                var fee: u64 = 3 + 24 + 24 + 98 + 8 + 8 + 4;
                 if (self.recipient_data) |recipient_data| {
-                    fee += recipient_data.len;
+                    fee += @intCast(recipient_data.len);
                 }
 
                 if (self.sender_data) |sender_data| {
-                    fee += sender_data.len;
+                    fee += @intCast(sender_data.len);
                 }
 
                 self.fee = fee;
@@ -63,10 +63,11 @@ pub const Builder = struct {
         defer allocator.free(signature_payload);
 
         const signature = try key_pair.sign(signature_payload, null);
-        const signature_bytes = signature.toBytes();
+        var signature_bytes = signature.toBytes();
 
         switch (self.transaction_type) {
-            types.TransactionType.Basic => self.compileBasicTransaction(allocator, key_pair.public_key, signature_bytes[0..]),
+            types.TransactionType.Basic => return self.compileBasicTransaction(allocator, key_pair.public_key, signature_bytes[0..]),
+            types.TransactionType.Extended => unreachable,
         }
     }
 
@@ -94,7 +95,7 @@ pub const Builder = struct {
             try serializer.pushVarInt(&list, @as(u16, @intCast(sender_data.len)));
             try serializer.pushBytes(&list, sender_data);
         } else {
-            try serializer.pushU16BigEndian(&list, 0);
+            try serializer.pushVarInt(&list, 0);
         }
 
         return list.toOwnedSlice();
@@ -102,10 +103,11 @@ pub const Builder = struct {
 
     fn compileBasicTransaction(self: *Self, allocator: Allocator, public_key: Ed25519.PublicKey, signature: []u8) ![]u8 {
         var list = std.ArrayList(u8).init(allocator);
+        var public_key_bytes = public_key.toBytes();
 
-        try serializer.pushByte(&list, self.transaction_type);
+        try serializer.pushByte(&list, @intFromEnum(self.transaction_type));
         try serializer.pushByte(&list, 0); // signature type, always Ed25519
-        try serializer.pushBytes(&list, public_key.toBytes()[0..]);
+        try serializer.pushBytes(&list, public_key_bytes[0..]);
         try serializer.pushAddress(&list, self.recipient);
         try serializer.pushU64BigEndian(&list, self.value);
         try serializer.pushU64BigEndian(&list, self.fee);
@@ -116,9 +118,17 @@ pub const Builder = struct {
         const raw_tx = try list.toOwnedSlice();
         defer allocator.free(raw_tx);
 
-        const raw_tx_hex = try allocator.alloc(u8, raw_tx.len * 2);
-
-        try std.fmt.hexToBytes(&raw_tx_hex, raw_tx);
+        var raw_tx_hex = try allocator.alloc(u8, raw_tx.len * 2);
+        raw_tx_hex = bytesToHex(raw_tx_hex, raw_tx);
         return raw_tx_hex;
+    }
+
+    fn bytesToHex(result: []u8, input: []u8) []u8 {
+        const charset = "0123456789abcdef";
+        for (input, 0..) |b, i| {
+            result[i * 2 + 0] = charset[b >> 4];
+            result[i * 2 + 1] = charset[b & 15];
+        }
+        return result;
     }
 };

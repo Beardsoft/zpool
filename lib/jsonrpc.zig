@@ -179,6 +179,24 @@ pub const Client = struct {
         return EnvelopeType{ .block_number = block_number, .result = inherents, .arena = arena };
     }
 
+    /// `sendRawTransaction` sends a raw transaction over the network and returns the transaction hash
+    pub fn sendRawTransaction(self: *Self, raw_tx: []u8, allocator: Allocator) ![]u8 {
+        const params = try self.allocator.alloc([]u8, 1);
+        defer self.allocator.free(params);
+        params[0] = raw_tx;
+
+        const ReqType = Request([][]u8);
+        var req = ReqType{ .method = "sendRawTransaction", .params = params };
+
+        const ResponseType = Response([]u8);
+        const parsed = try self.send(&req, ResponseType);
+        defer parsed.deinit();
+
+        const tx_hash = try allocator.alloc(u8, parsed.value.result.?.data.len);
+        @memcpy(tx_hash, parsed.value.result.?.data);
+        return tx_hash;
+    }
+
     /// send a raw JSON-RPC request, returns the decoded JSON-RPC response
     pub fn send(self: *Self, req: anytype, comptime ResponseType: type) !json.Parsed(ResponseType) {
         const headers = std.http.Client.Request.Headers{
