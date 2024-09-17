@@ -4,16 +4,12 @@ const posix = std.posix;
 const testing = std.testing;
 
 const Config = @import("config.zig");
+const nimiq = @import("nimiq.zig");
 const poller = @import("poller.zig");
 const querier = @import("querier.zig");
 const sqlite = @import("sqlite.zig");
 const Queue = @import("queue.zig");
 const worker = @import("worker.zig");
-
-const zpool = @import("zpool");
-const block = zpool.block;
-const jsonrpc = zpool.jsonrpc;
-const policy = zpool.policy;
 
 pub fn main() !void {
     if (try std.Thread.getCpuCount() < 2) {
@@ -43,7 +39,7 @@ pub fn main() !void {
     var client = http.Client{ .allocator = allocator };
     defer client.deinit();
     const uri = try std.Uri.parse(cfg.rpc_url);
-    var jsonrpc_client = jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
+    var jsonrpc_client = nimiq.jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
 
     var sqlite_conn = try sqlite.open(cfg.sqlite_db_path);
     // TODO defer close here

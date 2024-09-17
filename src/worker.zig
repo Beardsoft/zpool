@@ -12,12 +12,12 @@ const timer = @import("timer.zig");
 
 const zbackoff = @import("zbackoff");
 
-const zpool = @import("zpool");
-const Address = zpool.address;
-const jsonrpc = zpool.jsonrpc;
-const policy = zpool.policy;
-const Builder = zpool.transaction_builder.Builder;
-const types = zpool.types;
+const nimiq = @import("nimiq.zig");
+const Address = nimiq.address;
+const jsonrpc = nimiq.jsonrpc;
+const policy = nimiq.policy;
+const Builder = nimiq.transaction_builder.Builder;
+const types = nimiq.types;
 
 pub const Args = struct {
     queue: *Queue,

@@ -7,11 +7,11 @@ const querier = @import("querier.zig");
 const sqlite = @import("sqlite.zig");
 const Queue = @import("queue.zig");
 
-const zpool = @import("zpool");
-const BlockType = zpool.types.BlockType;
-const jsonrpc = zpool.jsonrpc;
-const policy = zpool.policy;
-const types = zpool.types;
+const nimiq = @import("nimiq.zig");
+const BlockType = nimiq.types.BlockType;
+const jsonrpc = nimiq.jsonrpc;
+const policy = nimiq.policy;
+const types = nimiq.types;
 
 const Self = @This();
 
