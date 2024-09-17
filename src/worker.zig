@@ -214,7 +214,7 @@ pub const Process = struct {
             // TODO: update to add stake transaction
             // for testing purposes doing a basic transaction is easiest, but this should be add stake instead.
             var tx_builder = Builder.newBasic(self.allocator, self.reward_address, recipient_address, pending_payment.amount, cache.block_number_get());
-            tx_builder.setFeeByByteSize();
+            try tx_builder.setFeeByByteSize();
             const raw_tx_hex = try tx_builder.signAndCompile(self.allocator, self.reward_address_key_pair);
             defer self.allocator.free(raw_tx_hex);
 

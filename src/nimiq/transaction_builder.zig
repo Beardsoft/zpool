@@ -7,6 +7,11 @@ const policy = @import("policy.zig");
 const serializer = @import("serializer.zig");
 const types = @import("types.zig");
 
+pub const BuilderError = error{
+    InsufficientFunds,
+    ValueCannotBeZero,
+};
+
 pub const Builder = struct {
     const Self = @This();
 
@@ -25,7 +30,9 @@ pub const Builder = struct {
     flags: u8 = 0,
     proof: ?[]u8 = null,
 
-    pub fn newBasic(allocator: Allocator, sender: Address, recipient: Address, value: u64, validity_start_height: u32) Self {
+    pub fn newBasic(allocator: Allocator, sender: Address, recipient: Address, value: u64, validity_start_height: u32) !Self {
+        if (value == 0) return BuilderError.ValueCannotBeZero;
+
         return .{
             .allocator = allocator,
             .sender = sender,
@@ -38,7 +45,7 @@ pub const Builder = struct {
         };
     }
 
-    pub fn setFeeByByteSize(self: *Self) void {
+    pub fn setFeeByByteSize(self: *Self) !void {
         switch (self.transaction_type) {
             types.TransactionType.Basic => {
                 self.fee = 3 + 64 + 32 + 20 + 8 + 8 + 4;
@@ -56,6 +63,9 @@ pub const Builder = struct {
                 self.fee = fee;
             },
         }
+
+        if (self.value < self.fee) return BuilderError.InsufficientFunds;
+        self.value -= self.fee;
     }
 
     pub fn signAndCompile(self: *Self, allocator: Allocator, key_pair: Ed25519.KeyPair) ![]u8 {
