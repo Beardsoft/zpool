@@ -5,7 +5,7 @@ const http = std.http;
 const json = std.json;
 const testing = std.testing;
 const Uri = std.Uri;
-
+const zbackoff = @import("zbackoff");
 const types = @import("types.zig");
 
 pub const Error = error{
@@ -100,7 +100,7 @@ pub const Client = struct {
         var req = ReqType{ .method = "getBlockNumber", .params = params };
 
         const ResponseType = Response(u32);
-        const parsed = try self.send(&req, ResponseType);
+        const parsed = try self.sendWithRetry(&req, ResponseType);
         defer parsed.deinit();
 
         return parsed.value.result.?.data;
@@ -116,7 +116,7 @@ pub const Client = struct {
         var req = ReqType{ .method = "getValidatorByAddress", .params = params };
 
         const ResponseType = Response(types.Validator);
-        const parsed = try self.send(&req, ResponseType);
+        const parsed = try self.sendWithRetry(&req, ResponseType);
         defer parsed.deinit();
 
         var arena = ArenaAllocator.init(allocator);
@@ -138,7 +138,7 @@ pub const Client = struct {
         var req = ReqType{ .method = "getStakersByValidatorAddress", .params = params };
 
         const ResponseType = Response([]types.Staker);
-        const parsed = try self.send(&req, ResponseType);
+        const parsed = try self.sendWithRetry(&req, ResponseType);
         defer parsed.deinit();
 
         var arena = ArenaAllocator.init(allocator);
@@ -164,7 +164,7 @@ pub const Client = struct {
         var req = ReqType{ .method = "getInherentsByBlockNumber", .params = params };
 
         const ResponseType = Response([]types.Inherent);
-        const parsed = try self.send(&req, ResponseType);
+        const parsed = try self.sendWithRetry(&req, ResponseType);
         defer parsed.deinit();
 
         var arena = ArenaAllocator.init(allocator);
@@ -189,12 +189,27 @@ pub const Client = struct {
         var req = ReqType{ .method = "sendRawTransaction", .params = params };
 
         const ResponseType = Response([]u8);
-        const parsed = try self.send(&req, ResponseType);
+        const parsed = try self.sendWithRetry(&req, ResponseType);
         defer parsed.deinit();
 
         const tx_hash = try allocator.alloc(u8, parsed.value.result.?.data.len);
         @memcpy(tx_hash, parsed.value.result.?.data);
         return tx_hash;
+    }
+
+    pub fn sendWithRetry(self: *Self, req: anytype, comptime ResponseType: type) !json.Parsed(ResponseType) {
+        var backoff = zbackoff.Backoff{};
+        for (0..3) |_| {
+            const response = self.send(req, ResponseType) catch |err| {
+                if (err == error.EndOfStream) {
+                    std.time.sleep(backoff.pause());
+                    continue;
+                }
+                return err;
+            };
+            return response;
+        }
+        return error.ConsistentAfterRetries;
     }
 
     /// send a raw JSON-RPC request, returns the decoded JSON-RPC response

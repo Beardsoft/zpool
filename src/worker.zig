@@ -9,7 +9,6 @@ const querier = @import("querier.zig");
 const Queue = @import("queue.zig");
 const sqlite = @import("sqlite.zig");
 const timer = @import("timer.zig");
-
 const zbackoff = @import("zbackoff");
 
 const nimiq = @import("nimiq.zig");
@@ -126,31 +125,10 @@ pub const Process = struct {
         // TODO: double check this includes all batches
         batch_loop: while (batch_index < policy.collection_batches) : (batch_index += 1) {
             const batch_number = first_batch + batch_index;
-
-            var backoff = zbackoff.Backoff{};
-            var batch_inherents: jsonrpc.Envelope([]types.Inherent) = undefined;
-            var success = false;
-
-            // Because this Thread only occasionly does HTTP requests the underlying connection could be closed
-            // we therefore employ retries.
-            // related: https://github.com/ziglang/zig/issues/19165
-            retry_loop: for (0..3) |_| {
-                const result = self.client.getInherentsByBlockNumber(policy.getBlockNumberForBatch(batch_number), self.allocator) catch |err| {
-                    std.log.debug("Failed to get inherents for collection {d}, batch {d}: {}. Attempting retry", .{ collection_number, batch_number, err });
-                    std.time.sleep(backoff.pause());
-                    continue :retry_loop;
-                };
-
-                batch_inherents = result;
-                success = true;
-                break;
-            }
-
-            if (!success) {
-                std.log.err("Failed to get inherents for collection {d}, batch {d}", .{ collection_number, batch_number });
-                return WorkerError.InherentFailed;
-            }
-
+            var batch_inherents = self.client.getInherentsByBlockNumber(policy.getBlockNumberForBatch(batch_number), self.allocator) catch |err| {
+                std.log.err("Failed to get inherents for collection {d}, batch {d}: {}. Attempting retry", .{ collection_number, batch_number, err });
+                return err;
+            };
             defer batch_inherents.deinit();
 
             inherent_loop: for (0..batch_inherents.result.len) |index| {
@@ -213,8 +191,9 @@ pub const Process = struct {
 
             // TODO: update to add stake transaction
             // for testing purposes doing a basic transaction is easiest, but this should be add stake instead.
-            var tx_builder = Builder.newBasic(self.allocator, self.reward_address, recipient_address, pending_payment.amount, cache.block_number_get());
+            var tx_builder = try Builder.newBasic(self.allocator, self.reward_address, recipient_address, pending_payment.amount, cache.block_number_get());
             try tx_builder.setFeeByByteSize();
+
             const raw_tx_hex = try tx_builder.signAndCompile(self.allocator, self.reward_address_key_pair);
             defer self.allocator.free(raw_tx_hex);
 
