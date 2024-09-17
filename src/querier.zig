@@ -5,3 +5,4 @@ pub const payslips = @import("querier/payslips.zig");
 pub const stakers = @import("querier/stakers.zig");
 pub const rewards = @import("querier/rewards.zig");
 pub const statuses = @import("querier/statuses.zig");
+pub const transactions = @import("querier/transactions.zig");

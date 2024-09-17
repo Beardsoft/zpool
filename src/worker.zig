@@ -203,7 +203,8 @@ pub const Process = struct {
     }
 
     fn executePendingPayments(self: *Self) !void {
-        const pending_payments = try querier.payslips.getPendingHigherThanMinPayout(self.sqlite_conn, self.allocator);
+        try querier.payslips.setElligableToOutForPayment(self.sqlite_conn);
+        const pending_payments = try querier.payslips.getOutForPayment(self.sqlite_conn, self.allocator);
         defer pending_payments.deinit();
 
         for (pending_payments.data) |pending_payment| {
@@ -220,8 +221,8 @@ pub const Process = struct {
             const tx_hash = try self.client.sendRawTransaction(raw_tx_hex, self.allocator);
             defer self.allocator.free(tx_hash);
 
-            // TODO: store transaction
-            // TODO: update related payslip
+            try querier.transactions.insertNewTransaction(self.sqlite_conn, tx_hash, pending_payment.address, pending_payment.amount, querier.statuses.Status.AwaitingConfirmation);
+            try querier.payslips.setTransaction(self.sqlite_conn, tx_hash, pending_payment.address);
 
             std.log.info("Staker {s} will receive {d}. Tx hash: {s}", .{ pending_payment.address, pending_payment.amount, tx_hash });
         }
