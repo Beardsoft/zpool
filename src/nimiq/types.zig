@@ -104,10 +104,10 @@ pub const Validator = struct {
     address: []u8,
     rewardAddress: []u8,
     balance: u64,
-    numStakers: u64,
+    numStakers: u16,
     retired: bool,
-    inactivityFlag: ?u64 = null,
-    jailedFrom: ?u64 = null,
+    inactivityFlag: ?u32 = null,
+    jailedFrom: ?u32 = null,
 
     pub fn cloneArenaAlloc(self: Self, allocator: Allocator) !Self {
         const new_address = try allocator.alloc(u8, self.address.len);
@@ -128,7 +128,7 @@ pub const Validator = struct {
     }
 
     /// Returns if the validator is active
-    pub fn isActive(self: Self, current_height: u64) bool {
+    pub fn isActive(self: Self, current_height: u32) bool {
         return self.getStatus(current_height) == ValidatorStatus.Active;
     }
 
@@ -136,7 +136,7 @@ pub const Validator = struct {
     /// `ValidatorStatus.Inactive` if inactivityFlag is lower than current height
     /// `ValidatorStatus.Jailed` if jailedFrom is lower than current height
     /// `ValidatorStatus.Active` in all other cases.
-    pub fn getStatus(self: Self, current_height: u64) ValidatorStatus {
+    pub fn getStatus(self: Self, current_height: u32) ValidatorStatus {
         if (self.retired) return ValidatorStatus.Retired;
 
         if (self.inactivityFlag) |height| {

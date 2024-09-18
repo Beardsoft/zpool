@@ -100,7 +100,7 @@ pub const Process = struct {
         const first_batch = policy.getFirstBatchFromCollection(collection_number);
         const epoch_number = policy.getEpochFromBatchNumber(first_batch);
 
-        const epoch_status = querier.epochs.getEpochStatusByNumber(self.sqlite_conn, epoch_number) catch |err| {
+        const epoch_details = querier.epochs.getEpochDetailsByNumber(self.sqlite_conn, epoch_number) catch |err| {
             if (err == querier.epochs.QueryError.NotFound) {
                 std.log.warn("collection passed for epoch {d}, but epoch is not found", .{epoch_number});
                 return;
@@ -110,8 +110,8 @@ pub const Process = struct {
             return err;
         };
 
-        if (epoch_status.isInvalid()) {
-            std.log.warn("collection {d} passed for invalid epoch {d} with status {}. Ignoring collection", .{ collection_number, epoch_number, epoch_status });
+        if (epoch_details.status.isInvalid()) {
+            std.log.warn("collection {d} passed for invalid epoch {d} with status {}. Ignoring collection", .{ collection_number, epoch_number, epoch_details.status });
         }
 
         // TODO:
@@ -157,9 +157,10 @@ pub const Process = struct {
 
         std.log.info("Reward for collection {d} completed: {d}", .{ collection_number, reward });
 
-        // TODO:
-        // depending on the slots of the validator the rewards could be 0
-        // this should be handled here
+        if (reward == 0) {
+            try querier.rewards.insertNewReward(self.sqlite_conn, epoch_number, collection_number, reward, 0, 0);
+            return;
+        }
 
         // TODO:
         // the reward and pool fee does not consider the stake of the validator itself
@@ -167,7 +168,7 @@ pub const Process = struct {
         const pool_fee = reward / 100 * self.cfg.pool_fee_percentage;
         reward -= pool_fee;
 
-        try querier.rewards.insertNewReward(self.sqlite_conn, epoch_number, collection_number, reward, pool_fee);
+        try querier.rewards.insertNewReward(self.sqlite_conn, epoch_number, collection_number, reward, pool_fee, epoch_details.num_stakers);
 
         const stakers = try querier.stakers.getStakersByEpoch(self.sqlite_conn, self.allocator, epoch_number);
         defer stakers.deinit();

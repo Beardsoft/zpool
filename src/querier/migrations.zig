@@ -99,6 +99,7 @@ const migration_version_0 =
     \\    collection_number INTEGER NOT NULL,
     \\    reward INTEGER NOT NULL,
     \\    pool_fee INTEGER NOT NULL,
+    \\    num_payments INTEGER NOT NULL,
     \\
     \\    PRIMARY KEY(epoch_number, collection_number),
     \\    FOREIGN KEY(epoch_number) REFERENCES epochs(number)
