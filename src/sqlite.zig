@@ -2,6 +2,7 @@
 const std = @import("std");
 const t = std.testing;
 const c = @cImport(@cInclude("sqlite3.h"));
+const zbackoff = @import("zbackoff");
 
 pub const OpenFlags = struct {
     pub const Create = c.SQLITE_OPEN_CREATE;
@@ -76,18 +77,38 @@ pub const Conn = struct {
     }
 
     pub fn execNoArgs(self: Conn, sql: [*:0]const u8) !void {
-        const rc = c.sqlite3_exec(self.conn, sql, null, null, null);
-        if (rc != c.SQLITE_OK) {
+        var backoff = zbackoff.Backoff{};
+        for (0..3) |_| {
+            const rc = c.sqlite3_exec(self.conn, sql, null, null, null);
+            if (rc == c.SQLITE_OK) return;
+
+            if (rc == c.SQLITE_BUSY) {
+                std.time.sleep(backoff.pause());
+                continue;
+            }
+
             return errorFromCode(rc);
         }
+        return Error.Busy;
     }
 
     pub fn prepare(self: Conn, sql: []const u8, values: anytype) !Stmt {
         var n_stmt: ?*c.sqlite3_stmt = null;
-        const rc = c.sqlite3_prepare_v2(self.conn, sql.ptr, @intCast(sql.len), &n_stmt, null);
-        if (rc != c.SQLITE_OK) {
+
+        var backoff = zbackoff.Backoff{};
+        const query_ok = for (0..3) |_| {
+            const rc = c.sqlite3_prepare_v2(self.conn, sql.ptr, @intCast(sql.len), &n_stmt, null);
+            if (rc == c.SQLITE_OK) break true;
+
+            if (rc == c.SQLITE_BUSY) {
+                std.time.sleep(backoff.pause());
+                continue;
+            }
+
             return errorFromCode(rc);
-        }
+        } else false;
+
+        if (!query_ok) return Error.Busy;
 
         const stmt = n_stmt.?;
         if (values.len > 0) {
@@ -655,96 +676,6 @@ pub fn isUnique(err: Error) bool {
     return err == error.ConstraintUnique;
 }
 
-pub const Pool = struct {
-    mutex: std.Thread.Mutex,
-    cond: std.Thread.Condition,
-    conns: []Conn,
-    available: usize,
-    allocator: std.mem.Allocator,
-
-    pub const Config = struct {
-        size: usize = 5,
-        flags: c_int = OpenFlags.Create | OpenFlags.EXResCode,
-        path: [*:0]const u8,
-        on_connection: ?*const fn (conn: Conn) anyerror!void = null,
-        on_first_connection: ?*const fn (conn: Conn) anyerror!void = null,
-    };
-
-    pub fn init(allocator: std.mem.Allocator, config: Config) !Pool {
-        const size = config.size;
-        const conns = try allocator.alloc(Conn, size);
-
-        const path = config.path;
-        const flags = config.flags;
-        const on_connection = config.on_connection;
-
-        var init_count: usize = 0;
-        errdefer {
-            for (0..init_count) |i| {
-                conns[i].close();
-            }
-        }
-
-        for (0..size) |i| {
-            const conn = try Conn.init(path, flags);
-            init_count += 1;
-            if (i == 0) {
-                if (config.on_first_connection) |f| {
-                    try f(conn);
-                }
-            }
-            if (on_connection) |f| {
-                try f(conn);
-            }
-            conns[i] = conn;
-        }
-
-        return .{
-            .conns = conns,
-            .available = size,
-            .allocator = allocator,
-            .mutex = std.Thread.Mutex{},
-            .cond = std.Thread.Condition{},
-        };
-    }
-
-    pub fn deinit(self: *Pool) void {
-        const allocator = self.allocator;
-        for (self.conns) |conn| {
-            conn.close();
-        }
-        allocator.free(self.conns);
-    }
-
-    pub fn acquire(self: *Pool) Conn {
-        self.mutex.lock();
-        while (true) {
-            const conns = self.conns;
-            const available = self.available;
-            if (available == 0) {
-                self.cond.wait(&self.mutex);
-                continue;
-            }
-            const index = available - 1;
-            const conn = conns[index];
-            self.available = index;
-            self.mutex.unlock();
-            return conn;
-        }
-    }
-
-    pub fn release(self: *Pool, conn: Conn) void {
-        self.mutex.lock();
-
-        var conns = self.conns;
-        const available = self.available;
-        conns[available] = conn;
-        self.available = available + 1;
-        self.mutex.unlock();
-        self.cond.signal();
-    }
-};
-
 test "exec and scan" {
     const conn = testDB();
     defer conn.close() catch unreachable;
@@ -1038,34 +969,6 @@ test "statement meta" {
     try t.expectEqual(ColumnType.int, row.stmt.columnType(0));
     try t.expectEqual(ColumnType.text, row.stmt.columnType(1));
     try t.expectEqual(ColumnType.null, row.stmt.columnType(2));
-}
-
-fn testPool(p: *Pool) void {
-    for (0..1000) |_| {
-        const conn = p.acquire();
-        conn.execNoArgs("update pool_test set cnt = cnt + 1") catch |err| {
-            std.debug.print("update err: {any}\n", .{err});
-            unreachable;
-        };
-        p.release(conn);
-    }
-}
-
-fn testPoolFirstConnection(conn: Conn) !void {
-    try conn.execNoArgs("pragma journal_mode=wal");
-
-    // This is not safe and can result in corruption. This is only set
-    // because the tests might be run on really slow hardware and we
-    // want to avoid having a busy timeout.
-    try conn.execNoArgs("pragma synchronous=off");
-
-    try conn.execNoArgs("drop table if exists pool_test");
-    try conn.execNoArgs("create table pool_test (cnt int not null)");
-    try conn.execNoArgs("insert into pool_test (cnt) values (0)");
-}
-
-fn testPoolEachConnection(conn: Conn) !void {
-    return conn.busyTimeout(5000);
 }
 
 fn testDB() Conn {
