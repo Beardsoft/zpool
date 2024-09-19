@@ -35,6 +35,7 @@ pub fn build(b: *std.Build) void {
     // modules
     const mod_policy = b.addModule("policy", .{ .root_source_file = network_policy_path });
     const mod_base32 = b.dependency("base32", .{}).module("base32");
+    const mod_toml = b.dependency("zig-toml", .{}).module("zig-toml");
     const mod_zbackoff = b.dependency("zbackoff", .{}).module("zbackoff");
 
     const exe = b.addExecutable(.{
@@ -46,6 +47,7 @@ pub fn build(b: *std.Build) void {
 
     exe.root_module.addImport("policy", mod_policy);
     exe.root_module.addImport("base32", mod_base32);
+    exe.root_module.addImport("zig-toml", mod_toml);
     exe.root_module.addImport("zbackoff", mod_zbackoff);
     exe.linkSystemLibrary("sqlite3");
     exe.linkLibC();
@@ -85,8 +87,9 @@ pub fn build(b: *std.Build) void {
     });
 
     exe_unit_tests.root_module.addImport("policy", mod_policy);
-    exe_unit_tests.root_module.addImport("zbackoff", mod_zbackoff);
     exe_unit_tests.root_module.addImport("base32", mod_base32);
+    exe_unit_tests.root_module.addImport("zig-toml", mod_toml);
+    exe_unit_tests.root_module.addImport("zbackoff", mod_zbackoff);
     exe_unit_tests.linkSystemLibrary("sqlite3");
     exe_unit_tests.linkLibC();
 

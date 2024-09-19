@@ -2,7 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const cache = @import("cache.zig");
-const Config = @import("config.zig");
+const config = @import("config.zig");
 const querier = @import("querier.zig");
 const sqlite = @import("sqlite.zig");
 const Queue = @import("queue.zig");
@@ -16,7 +16,7 @@ const types = nimiq.types;
 const Self = @This();
 
 client: *jsonrpc.Client,
-cfg: *Config,
+cfg: *config.Config,
 allocator: Allocator,
 sqlite_conn: *sqlite.Conn,
 queue: *Queue,

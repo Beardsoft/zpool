@@ -1,0 +1,9 @@
+sqlite_db_path = "./zpool-sqlite.db"
+
+[validator]
+address = "NQ20 TSB0 DFSM UH9C 15GQ GAGJ TTE4 D3MA 859E"
+reward_address = "NQ46 U66M JNLD 0DJ7 0E9P Q7XR V9KV H976 813A"
+reward_secret_key = "6c9320ac201caf1f8eaa5b05f5d67a9e77826f3f6be266a0ecccc20416dc6587"
+
+[pool]
+fee_percentage = 5

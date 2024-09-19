@@ -3,7 +3,7 @@ const Allocator = std.mem.Allocator;
 const Ed25519 = std.crypto.sign.Ed25519;
 const http = std.http;
 
-const Config = @import("config.zig");
+const config = @import("config.zig");
 const cache = @import("cache.zig");
 const querier = @import("querier.zig");
 const Queue = @import("queue.zig");
@@ -20,7 +20,7 @@ const types = nimiq.types;
 
 pub const Args = struct {
     queue: *Queue,
-    cfg: *Config,
+    cfg: *config.Config,
 };
 
 pub const WorkerError = error{
@@ -47,27 +47,14 @@ pub fn run(args: Args) !void {
 pub const Process = struct {
     const Self = @This();
 
-    reward_address: Address = Address{},
-    reward_address_key_pair: Ed25519.KeyPair = undefined,
     queue: *Queue,
-    cfg: *Config,
+    cfg: *config.Config,
     client: *jsonrpc.Client,
     sqlite_conn: *sqlite.Conn,
     allocator: Allocator,
 
     pub fn run(self: *Self) !void {
         std.log.info("started worker thread", .{});
-
-        try self.reward_address.parseAddressFromFriendly(self.cfg.reward_address);
-
-        var private_key_raw = try self.allocator.alloc(u8, self.cfg.reward_address_secret_key.len / 2);
-        defer self.allocator.free(private_key_raw);
-        private_key_raw = try std.fmt.hexToBytes(private_key_raw, self.cfg.reward_address_secret_key[0..]);
-
-        var private_key_seed = [_]u8{0} ** 32;
-        @memcpy(&private_key_seed, private_key_raw);
-
-        self.reward_address_key_pair = try Ed25519.KeyPair.create(private_key_seed);
 
         var scheduled_task_tracker = timer.new();
 
@@ -170,10 +157,10 @@ pub const Process = struct {
 
         try querier.rewards.insertNewReward(self.sqlite_conn, epoch_number, collection_number, reward, pool_fee, epoch_details.num_stakers);
 
-        const stakers = try querier.stakers.getStakersByEpoch(self.sqlite_conn, self.allocator, epoch_number);
+        var stakers = try querier.stakers.getStakersByEpoch(self.sqlite_conn, self.allocator, epoch_number);
         defer stakers.deinit();
 
-        for (stakers.data) |staker| {
+        for (stakers.value) |staker| {
             const staker_reward: u64 = @intFromFloat(@as(f64, @floatFromInt(reward)) / 100.00 * staker.stake_percentage);
             std.log.info("Staker {s} is owed {d} for collection {d}", .{ staker.address, staker_reward, collection_number });
 
@@ -183,19 +170,19 @@ pub const Process = struct {
 
     fn executePendingPayments(self: *Self) !void {
         try querier.payslips.setElligableToOutForPayment(self.sqlite_conn);
-        const pending_payments = try querier.payslips.getOutForPayment(self.sqlite_conn, self.allocator);
+        var pending_payments = try querier.payslips.getOutForPayment(self.sqlite_conn, self.allocator);
         defer pending_payments.deinit();
 
-        for (pending_payments.data) |pending_payment| {
+        for (pending_payments.value) |pending_payment| {
             var recipient_address = Address{};
             try recipient_address.parseAddressFromFriendly(pending_payment.address);
 
             // TODO: update to add stake transaction
             // for testing purposes doing a basic transaction is easiest, but this should be add stake instead.
-            var tx_builder = try Builder.newBasic(self.allocator, self.reward_address, recipient_address, pending_payment.amount, cache.block_number_get());
+            var tx_builder = try Builder.newBasic(self.allocator, self.cfg.reward_address, recipient_address, pending_payment.amount, cache.block_number_get());
             try tx_builder.setFeeByByteSize();
 
-            const raw_tx_hex = try tx_builder.signAndCompile(self.allocator, self.reward_address_key_pair);
+            const raw_tx_hex = try tx_builder.signAndCompile(self.allocator, self.cfg.reward_address_key_pair);
             defer self.allocator.free(raw_tx_hex);
 
             const tx_hash = try self.client.sendRawTransaction(raw_tx_hex, self.allocator);

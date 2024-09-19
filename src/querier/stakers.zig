@@ -2,7 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
 const sqlite = @import("../sqlite.zig");
-const Envelope = @import("common.zig").Envelope;
+const ArenaWrapped = @import("../utils.zig").ArenaWrapped;
 
 pub fn insertNewStaker(conn: *sqlite.Conn, address: []const u8, epoch_number: u32, stake_balance: u64, stake_percentage: f64) !void {
     try conn.exec("REPLACE INTO stakers(address, epoch_number, stake_balance, stake_percentage) VALUES(?1, ?2, ?3, ?4);", .{ address, epoch_number, stake_balance, stake_percentage });
@@ -13,7 +13,7 @@ pub const GetStakersByEpochRow = struct {
     stake_percentage: f64,
 };
 
-pub fn getStakersByEpoch(conn: *sqlite.Conn, allocator: Allocator, epoch_number: u32) !Envelope(GetStakersByEpochRow) {
+pub fn getStakersByEpoch(conn: *sqlite.Conn, allocator: Allocator, epoch_number: u32) !ArenaWrapped([]GetStakersByEpochRow) {
     var rows = try conn.rows("SELECT address, stake_percentage FROM stakers WHERE epoch_number = ?1;", .{epoch_number});
     defer rows.deinit();
 
@@ -33,5 +33,5 @@ pub fn getStakersByEpoch(conn: *sqlite.Conn, allocator: Allocator, epoch_number:
     }
 
     const data = try array_list.toOwnedSlice();
-    return Envelope(GetStakersByEpochRow){ .arena = arena, .data = data };
+    return ArenaWrapped([]GetStakersByEpochRow){ .arena = arena, .value = data };
 }

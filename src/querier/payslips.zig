@@ -3,7 +3,7 @@ const ArenaAllocator = std.heap.ArenaAllocator;
 const Allocator = std.mem.Allocator;
 const sqlite = @import("../sqlite.zig");
 const Status = @import("statuses.zig").Status;
-const Envelope = @import("common.zig").Envelope;
+const ArenaWrapped = @import("../utils.zig").ArenaWrapped;
 
 pub fn insertNewPayslip(conn: *sqlite.Conn, collection_number: u32, address: []u8, amount: u64, status: Status) !void {
     try conn.exec("INSERT INTO payslips(collection_number, address, amount, status_id) VALUES(?1, ?2, ?3, ?4);", .{ collection_number, address, amount, @intFromEnum(status) });
@@ -20,7 +20,7 @@ pub const GetOutForPaymentRow = struct {
     amount: u64,
 };
 
-pub fn getOutForPayment(conn: *sqlite.Conn, allocator: Allocator) !Envelope(GetOutForPaymentRow) {
+pub fn getOutForPayment(conn: *sqlite.Conn, allocator: Allocator) !ArenaWrapped([]GetOutForPaymentRow) {
     var rows = try conn.rows("SELECT SUM(amount), address FROM payslips WHERE status_id = 8 GROUP BY address;", .{});
     defer rows.deinit();
 
@@ -40,7 +40,7 @@ pub fn getOutForPayment(conn: *sqlite.Conn, allocator: Allocator) !Envelope(GetO
     }
 
     const data = try array_list.toOwnedSlice();
-    return Envelope(GetOutForPaymentRow){ .arena = arena, .data = data };
+    return ArenaWrapped([]GetOutForPaymentRow){ .arena = arena, .value = data };
 }
 
 pub fn setTransaction(conn: *sqlite.Conn, hash: []u8, address: []u8) !void {

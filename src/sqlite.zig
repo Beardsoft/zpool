@@ -83,6 +83,7 @@ pub const Conn = struct {
             if (rc == c.SQLITE_OK) return;
 
             if (rc == c.SQLITE_BUSY) {
+                std.log.debug("sqlite busy, retrying....", .{});
                 std.time.sleep(backoff.pause());
                 continue;
             }
@@ -101,6 +102,7 @@ pub const Conn = struct {
             if (rc == c.SQLITE_OK) break true;
 
             if (rc == c.SQLITE_BUSY) {
+                std.log.debug("sqlite busy, retrying....", .{});
                 std.time.sleep(backoff.pause());
                 continue;
             }

@@ -3,7 +3,7 @@ const http = std.http;
 const posix = std.posix;
 const testing = std.testing;
 
-const Config = @import("config.zig");
+const config = @import("config.zig");
 const nimiq = @import("nimiq.zig");
 const poller = @import("poller.zig");
 const querier = @import("querier.zig");
@@ -21,7 +21,13 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var cfg = Config{};
+    var cfg_wrapped = config.load(allocator) catch |err| {
+        std.log.err("failed to load config: {}", .{err});
+        return;
+    };
+    defer cfg_wrapped.deinit();
+
+    var cfg = cfg_wrapped.value;
 
     // Worker setup
     var worker_queue = Queue{ .allocator = allocator };

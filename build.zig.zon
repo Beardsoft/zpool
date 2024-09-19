@@ -31,6 +31,10 @@
             .url = "https://github.com/gernest/base32/archive/refs/tags/v0.2.0.tar.gz",
             .hash = "1220335dd324d6eedb7b41b5fccb7f1708e4fd39d5286c09d25b3de3f00983a24fc0",
         },
+        .@"zig-toml" = .{
+            .url = "https://codeload.github.com/sam701/zig-toml/zip/67e35c75c5d11caf398bccae39d14d7187d1a952",
+            .hash = "1220ced9b2f6943f688ce1e20a40f143d83c4182320e4b9d30e470b010d44b356f0a",
+        },
     },
     .paths = .{
         "build.zig",
