@@ -33,10 +33,10 @@ pub fn build(b: *std.Build) void {
     };
 
     // modules
-    const mod_policy = b.addModule("policy", .{ .root_source_file = network_policy_path });
-    const mod_base32 = b.dependency("base32", .{}).module("base32");
-    const mod_toml = b.dependency("zig-toml", .{}).module("zig-toml");
-    const mod_zbackoff = b.dependency("zbackoff", .{}).module("zbackoff");
+    const mod_policy = b.addModule("policy", .{ .root_source_file = network_policy_path, .target = target, .optimize = optimize });
+    const mod_base32 = b.dependency("base32", .{ .target = target, .optimize = optimize }).module("base32");
+    const mod_toml = b.dependency("zig-toml", .{ .target = target, .optimize = optimize }).module("zig-toml");
+    const mod_zbackoff = b.dependency("zbackoff", .{ .target = target, .optimize = optimize }).module("zbackoff");
 
     const exe = b.addExecutable(.{
         .name = "zpool",
