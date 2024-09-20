@@ -192,9 +192,7 @@ pub const Client = struct {
         const parsed = try self.sendWithRetry(&req, ResponseType);
         defer parsed.deinit();
 
-        const tx_hash = try allocator.alloc(u8, parsed.value.result.?.data.len);
-        @memcpy(tx_hash, parsed.value.result.?.data);
-        return tx_hash;
+        return try Allocator.dupe(allocator, u8, parsed.value.result.?.data);
     }
 
     /// `getTransactionByHash` retrieves transaction by hash

@@ -25,17 +25,14 @@ pub fn getOutForPayment(conn: *sqlite.Conn, allocator: Allocator) !ArenaWrapped(
     defer rows.deinit();
 
     var arena = ArenaAllocator.init(allocator);
-    var arena_allocator = arena.allocator();
+    const arena_allocator = arena.allocator();
 
     var array_list = std.ArrayList(GetOutForPaymentRow).init(arena_allocator);
 
     while (rows.next()) |row| {
         const amount = @as(u64, @intCast(row.int(0)));
-        var address = row.text(1);
-
-        const address_copy = try arena_allocator.alloc(u8, address.len);
-        @memcpy(address_copy, address[0..]);
-
+        const address = row.text(1);
+        const address_copy = try Allocator.dupe(arena_allocator, u8, address);
         try array_list.append(GetOutForPaymentRow{ .address = address_copy, .amount = amount });
     }
 

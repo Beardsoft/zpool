@@ -18,17 +18,14 @@ pub fn getStakersByEpoch(conn: *sqlite.Conn, allocator: Allocator, epoch_number:
     defer rows.deinit();
 
     var arena = ArenaAllocator.init(allocator);
-    var arena_allocator = arena.allocator();
+    const arena_allocator = arena.allocator();
 
     var array_list = std.ArrayList(GetStakersByEpochRow).init(arena_allocator);
 
     while (rows.next()) |row| {
-        var address = row.text(0);
+        const address = row.text(0);
         const stake_percentage = row.float(1);
-
-        const address_copy = try arena_allocator.alloc(u8, address.len);
-        @memcpy(address_copy, address[0..]);
-
+        const address_copy = try Allocator.dupe(arena_allocator, u8, address);
         try array_list.append(GetStakersByEpochRow{ .address = address_copy, .stake_percentage = stake_percentage });
     }
 

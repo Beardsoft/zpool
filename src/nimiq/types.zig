@@ -37,21 +37,15 @@ pub const Inherent = struct {
     }
 
     pub fn cloneArenaAlloc(self: Self, allocator: Allocator) !Self {
-        const new_type = try allocator.alloc(u8, self.type.len);
-        @memcpy(new_type, self.type);
-
+        const new_type = try Allocator.dupe(allocator, u8, self.type);
         var new_inherent = Self{ .type = new_type, .blockNumber = self.blockNumber, .value = self.value };
 
         if (self.validatorAddress) |validator_address| {
-            const new_address = try allocator.alloc(u8, validator_address.len);
-            @memcpy(new_address, validator_address);
-            new_inherent.validatorAddress = new_address;
+            new_inherent.validatorAddress = try Allocator.dupe(allocator, u8, validator_address);
         }
 
         if (self.target) |target_address| {
-            const new_address = try allocator.alloc(u8, target_address.len);
-            @memcpy(new_address, target_address);
-            new_inherent.target = new_address;
+            new_inherent.target = try Allocator.dupe(allocator, u8, target_address);
         }
 
         return new_inherent;
@@ -85,11 +79,8 @@ pub const Staker = struct {
     inactiveFrom: ?u64 = null,
 
     pub fn cloneArenaAlloc(self: Self, allocator: Allocator) !Self {
-        const new_address = try allocator.alloc(u8, self.address.len);
-        @memcpy(new_address, self.address);
-
-        const new_delegation = try allocator.alloc(u8, self.delegation.len);
-        @memcpy(new_delegation, self.delegation);
+        const new_address = try Allocator.dupe(allocator, u8, self.address);
+        const new_delegation = try Allocator.dupe(allocator, u8, self.delegation);
 
         return Self{
             .address = new_address,
@@ -122,11 +113,8 @@ pub const Validator = struct {
     jailedFrom: ?u32 = null,
 
     pub fn cloneArenaAlloc(self: Self, allocator: Allocator) !Self {
-        const new_address = try allocator.alloc(u8, self.address.len);
-        @memcpy(new_address, self.address);
-
-        const new_reward_address = try allocator.alloc(u8, self.rewardAddress.len);
-        @memcpy(new_reward_address, self.rewardAddress);
+        const new_address = try Allocator.dupe(allocator, u8, self.address);
+        const new_reward_address = try Allocator.dupe(allocator, u8, self.rewardAddress);
 
         return Self{
             .address = new_address,
