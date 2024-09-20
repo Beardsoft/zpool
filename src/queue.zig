@@ -1,4 +1,6 @@
 const std = @import("std");
+const atomic = std.atomic;
+const builtin = std.builtin;
 const Allocator = std.mem.Allocator;
 
 pub const InstructionType = enum {
@@ -11,7 +13,7 @@ const QueueType = std.DoublyLinkedList(Instruction);
 
 const Self = @This();
 
-var interrupted = false;
+var interrupted = atomic.Value(bool).init(false);
 
 queue: QueueType = QueueType{},
 allocator: Allocator,
@@ -66,7 +68,7 @@ pub fn close(self: *Self) void {
 }
 
 pub fn isClosed(self: *Self) bool {
-    if (interrupted) self.close();
+    if (interrupted.load(builtin.AtomicOrder.monotonic)) self.close();
 
     self.mutex.lockShared();
     defer self.mutex.unlockShared();
@@ -74,9 +76,6 @@ pub fn isClosed(self: *Self) bool {
     return self.closed;
 }
 
-// TODO:
-// this is rather hacky and should probably employ
-// atomics for Thread safety
 pub fn signalHandler(_: c_int) callconv(.C) void {
-    interrupted = true;
+    interrupted.store(true, builtin.AtomicOrder.monotonic);
 }
