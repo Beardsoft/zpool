@@ -250,6 +250,9 @@ pub const Stmt = struct {
             return false;
         }
         if (rc != c.SQLITE_ROW) {
+            if (rc == c.SQLITE_BUSY) {
+                std.log.warn("sqlite busy on step", .{});
+            }
             return errorFromCode(rc);
         }
         return true;
@@ -261,6 +264,11 @@ pub const Stmt = struct {
             switch (c.sqlite3_step(stmt)) {
                 c.SQLITE_DONE => return,
                 c.SQLITE_ROW => continue,
+                c.SQLITE_BUSY => {
+                    std.log.warn("sqlite busy on step, retrying", .{});
+                    std.time.sleep(std.time.ns_per_s);
+                    continue;
+                },
                 else => |rc| return errorFromCode(rc),
             }
         }
