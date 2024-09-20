@@ -197,6 +197,22 @@ pub const Client = struct {
         return tx_hash;
     }
 
+    /// `getTransactionByHash` retrieves transaction by hash
+    pub fn getTransactionByHash(self: *Self, tx_hash: []u8) !types.Transaction {
+        const params = try self.allocator.alloc([]u8, 1);
+        defer self.allocator.free(params);
+        params[0] = tx_hash;
+
+        const ReqType = Request([][]u8);
+        var req = ReqType{ .method = "getTransactionByHash", .params = params };
+
+        const ResponseType = Response(types.Transaction);
+        const parsed = try self.sendWithRetry(&req, ResponseType);
+        defer parsed.deinit();
+
+        return .{ .blockNumber = parsed.value.result.?.data.blockNumber, .executionResult = parsed.value.result.?.data.executionResult };
+    }
+
     pub fn sendWithRetry(self: *Self, req: anytype, comptime ResponseType: type) !json.Parsed(ResponseType) {
         var backoff = zbackoff.Backoff{};
         for (0..3) |_| {
@@ -283,7 +299,3 @@ pub const Client = struct {
         return Error.UnknownError;
     }
 };
-
-test "jsonrpc" {
-    try testing.expect(true);
-}

@@ -68,6 +68,7 @@ pub const Process = struct {
             if (scheduled_task_tracker.hasPassedDuration(std.time.ms_per_s * 300)) {
                 scheduled_task_tracker.reset();
 
+                try self.checkTransactionConfirmations();
                 try self.executePendingPayments();
             }
 
@@ -168,6 +169,9 @@ pub const Process = struct {
         }
     }
 
+    // this will execute pending payments. It does bundle open payments together and will only
+    // do a payout once a minimum payout amount is reached. All transactions are tracked
+    // as pending until they are confirmed.
     fn executePendingPayments(self: *Self) !void {
         try querier.payslips.setElligableToOutForPayment(self.sqlite_conn);
         var pending_payments = try querier.payslips.getOutForPayment(self.sqlite_conn, self.allocator);
@@ -192,6 +196,43 @@ pub const Process = struct {
             try querier.payslips.setTransaction(self.sqlite_conn, tx_hash, pending_payment.address);
 
             std.log.info("Staker {s} will receive {d}. Tx hash: {s}", .{ pending_payment.address, pending_payment.amount, tx_hash });
+        }
+    }
+
+    // this will check all pending transactions, and mark them completed if the
+    // transaction is mined, a new macro block has passed and the execution result is true
+    // one a transaction is considered completed, all corresponding payslips for that transaction
+    // will be marked completed as well.
+    fn checkTransactionConfirmations(self: *Self) !void {
+        var pending_txs = try querier.transactions.getTransactionHashesAwaitingConfirmation(self.sqlite_conn, self.allocator);
+        defer pending_txs.deinit();
+
+        for (pending_txs.value) |pending_tx| {
+            const pending_tx_hash = pending_tx.hash;
+            const transaction = self.client.getTransactionByHash(pending_tx_hash) catch |err| {
+                // TODO
+                // It could be the transaction was never mined. This should be checked and perhaps
+                // retried in the future
+                std.log.err("could not retrieve tx with hash {s}: {}", .{ pending_tx_hash, err });
+                continue;
+            };
+
+            if (!transaction.isConfirmed(cache.block_number_get())) {
+                std.log.warn("tx with hash {s} is not yet confirmed", .{pending_tx_hash});
+                continue;
+            }
+
+            if (!transaction.executionResult) {
+                std.log.warn("tx with hash {s} failed", .{pending_tx_hash});
+                // TODO
+                // this failed so has to be retried. Update state so this transaction will be retried
+                // during a next iteration.
+                continue;
+            }
+
+            std.log.info("tx with hash {s} is confirmed", .{pending_tx_hash});
+            try querier.transactions.setStatus(self.sqlite_conn, pending_tx_hash, querier.statuses.Status.Completed);
+            try querier.payslips.finalize(self.sqlite_conn, pending_tx_hash);
         }
     }
 };

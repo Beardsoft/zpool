@@ -1,5 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const policy = @import("policy.zig");
 const testing = std.testing;
 
 pub const AccountType = enum(u8) { Basic, Vesting, HTLC, Staking };
@@ -8,10 +9,21 @@ pub const BlockType = enum { Election, Checkpoint, Micro };
 
 pub const TransactionType = enum(u8) { Basic, Extended };
 
+pub const Transaction = struct {
+    const Self = @This();
+
+    blockNumber: u32,
+    executionResult: bool,
+
+    pub fn isConfirmed(self: Self, current_height: u32) bool {
+        return policy.macroBlockPassedSince(self.blockNumber, current_height);
+    }
+};
+
 pub const Inherent = struct {
     const Self = @This();
     type: []u8,
-    blockNumber: u64,
+    blockNumber: u32,
     validatorAddress: ?[]u8 = null,
     target: ?[]u8 = null,
     value: ?u64 = null,

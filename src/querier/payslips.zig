@@ -46,3 +46,7 @@ pub fn getOutForPayment(conn: *sqlite.Conn, allocator: Allocator) !ArenaWrapped(
 pub fn setTransaction(conn: *sqlite.Conn, hash: []u8, address: []u8) !void {
     try conn.exec("UPDATE payslips SET tx_hash = ?1, status_id = ?2 WHERE address = ?3 AND status_id = ?4;", .{ hash, @intFromEnum(Status.AwaitingConfirmation), address, @intFromEnum(Status.OutForPayment) });
 }
+
+pub fn finalize(conn: *sqlite.Conn, tx_hash: []u8) !void {
+    try conn.exec("UPDATE payslips SET status_id = ?1 WHERE tx_hash = ?2;", .{ @intFromEnum(Status.Completed), tx_hash });
+}
