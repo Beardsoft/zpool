@@ -238,14 +238,11 @@ pub const Process = struct {
     // this checks whether all payments for a given epoch are completed. If so
     // the epoch is marked completed in the database.
     fn checkFinalizedEpochs(self: *Self) !void {
-        const payment_details = try querier.epochs.getPaymentsCompletedByInProgress(self.sqlite_conn, self.allocator);
-        defer self.allocator.free(payment_details);
+        const completed_epochs = try querier.epochs.finalizeCompleted(self.sqlite_conn, self.allocator);
+        defer self.allocator.free(completed_epochs);
 
-        for (payment_details) |summary| {
-            if ((summary.num_stakers * policy.collections_per_epoch) != summary.number_of_payments) continue;
-
-            std.log.info("All payments for epoch {d} completed", .{summary.epoch_number});
-            try querier.epochs.setStatus(self.sqlite_conn, summary.epoch_number, querier.statuses.Status.Completed);
+        for (completed_epochs) |epoch_number| {
+            std.log.info("All payments for epoch {d} completed", .{epoch_number});
         }
     }
 };

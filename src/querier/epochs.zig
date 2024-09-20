@@ -38,20 +38,31 @@ pub fn getEpochDetailsByNumber(conn: *sqlite.Conn, epoch_number: u32) !GetEpochD
     return QueryError.NotFound;
 }
 
-pub const GetPaymentsCompletedByInProgressRow = struct {
-    number_of_payments: u32,
-    epoch_number: u32,
-    num_stakers: u32,
-};
+const finalizeCompletedQuery =
+    \\UPDATE epochs SET status_id = 6 WHERE number IN (
+    \\    SELECT r.epoch_number
+    \\    FROM rewards AS r
+    \\    INNER JOIN (
+    \\        SELECT COUNT(collection_number) AS count, collection_number
+    \\        FROM payslips 
+    \\        WHERE status_id = 6
+    \\        GROUP BY collection_number
+    \\    ) AS p 
+    \\        ON p.collection_number = r.collection_number
+    \\    LEFT JOIN epochs AS e ON r.epoch_number = e.number 
+    \\    WHERE e.status_id = 5 GROUP BY r.epoch_number
+    \\    HAVING SUM(p.count) = SUM(r.num_payments)
+    \\) RETURNING number;
+;
 
-pub fn getPaymentsCompletedByInProgress(conn: *sqlite.Conn, allocator: Allocator) ![]GetPaymentsCompletedByInProgressRow {
-    var rows = try conn.rows("SELECT COUNT(p.collection_number), r.epoch_number, e.num_stakers FROM payslips AS p LEFT JOIN rewards AS r ON p.collection_number == r.collection_number LEFT JOIN epochs AS e ON r.epoch_number = e.number WHERE p.status_id = 6 AND e.status_id = 5 GROUP BY r.epoch_number;", .{});
+pub fn finalizeCompleted(conn: *sqlite.Conn, allocator: Allocator) ![]u32 {
+    var rows = try conn.rows(finalizeCompletedQuery, .{});
     defer rows.deinit();
 
-    var list = std.ArrayList(GetPaymentsCompletedByInProgressRow).init(allocator);
+    var list = std.ArrayList(u32).init(allocator);
 
     while (rows.next()) |row| {
-        try list.append(GetPaymentsCompletedByInProgressRow{ .number_of_payments = @as(u32, @intCast(row.int(0))), .epoch_number = @as(u32, @intCast(row.int(1))), .num_stakers = @as(u32, @intCast(row.int(2))) });
+        try list.append(@as(u32, @intCast(row.int(0))));
     }
 
     return list.toOwnedSlice();
