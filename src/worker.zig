@@ -181,9 +181,8 @@ pub const Process = struct {
             var recipient_address = Address{};
             try recipient_address.parseAddressFromFriendly(pending_payment.address);
 
-            // TODO: update to add stake transaction
-            // for testing purposes doing a basic transaction is easiest, but this should be add stake instead.
-            var tx_builder = try Builder.newBasic(self.allocator, self.cfg.reward_address, recipient_address, pending_payment.amount, cache.block_number_get());
+            var tx_builder = try Builder.newAddStake(self.allocator, self.cfg.reward_address, recipient_address, pending_payment.amount, cache.block_number_get());
+            defer tx_builder.deinit();
             try tx_builder.setFeeByByteSize();
 
             const raw_tx_hex = try tx_builder.signAndCompile(self.allocator, self.cfg.reward_address_key_pair);
