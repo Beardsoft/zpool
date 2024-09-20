@@ -111,7 +111,6 @@ pub const Process = struct {
         var reward: u64 = 0;
         var batch_index: u32 = 0;
 
-        // TODO: double check this includes all batches
         batch_loop: while (batch_index < policy.collection_batches) : (batch_index += 1) {
             const batch_number = first_batch + batch_index;
             var batch_inherents = self.client.getInherentsByBlockNumber(policy.getBlockNumberForBatch(batch_number), self.allocator) catch |err| {

@@ -1,5 +1,5 @@
 diff --git a/.zkp_devnet/meta_data.json b/.zkp_devnet/meta_data.json
-index 9be15be53..a9627e2c2 100644
+index 9be15be53..bab3a5707 100644
 --- a/.zkp_devnet/meta_data.json
 +++ b/.zkp_devnet/meta_data.json
 @@ -1,5 +1,5 @@
@@ -7,11 +7,11 @@ index 9be15be53..a9627e2c2 100644
    "genesisHash": "bd79d1e2dd97e7ca0940fcd719f52baa473859661b5d7d4f092603d1d3fc67ad",
    "vksCommitment": "0e602abf5b642b77f66a4cc7f452c9339b61f68bac7880c8258f4f808130c8a3ee5ad8a8a82703855bc94cc5b36a7df79882020617327a60e8905a41b86a269e7b680e23f4c1b30536f2fe27f6fd45110a557f3b42f73aba064ba46a3a85807f8271411a56da6edfac40941c7a8e53645154c0678391a9634133166410330ba6fe10e4a1e8157de3e155d1bfeb909343c91f5931d46c383a09b072de91f10bb3a78690afb648ef9086bb1f1c18443b6d2d699f1f110f5acaf37dc249cb80",
 -  "blocksPerEpoch": 43200
-+  "blocksPerEpoch": 240
++  "blocksPerEpoch": 480
  }
 \ No newline at end of file
 diff --git a/genesis/src/genesis/dev-albatross-4-validators.toml b/genesis/src/genesis/dev-albatross-4-validators.toml
-index fbc3b571d..c4b8b0b3d 100644
+index fbc3b571d..2604e840f 100644
 --- a/genesis/src/genesis/dev-albatross-4-validators.toml
 +++ b/genesis/src/genesis/dev-albatross-4-validators.toml
 @@ -89,6 +89,36 @@ staker_address = "NQ64 VP65 7809 JC9D X4XP QDRU KYTN 79JN 46A5"
@@ -20,7 +20,7 @@ index fbc3b571d..c4b8b0b3d 100644
  
 +[[stakers]]
 +staker_address = "NQ69 F067 AXJ7 TJTE 3J80 5GCY 6CMX 1FEK 6MCR"
-+balance = 10000000
++balance = 100000000
 +delegation = "NQ20 TSB0 DFSM UH9C 15GQ GAGJ TTE4 D3MA 859E"
 +inactive_balance = 0
 +
@@ -52,7 +52,7 @@ index fbc3b571d..c4b8b0b3d 100644
  address = "NQ55 X103 EJXG 3S2U 3JNE L779 560T 3LNE 7S60"
  # private_key = "a24591648e20642fe5107d0285c1cc35d67e2033a92566f1217fbd3a14e07abc"
 diff --git a/primitives/src/policy.rs b/primitives/src/policy.rs
-index c9c2dd24e..ec1d23e3b 100644
+index c9c2dd24e..dc83485f2 100644
 --- a/primitives/src/policy.rs
 +++ b/primitives/src/policy.rs
 @@ -645,9 +645,9 @@ impl Default for Policy {
@@ -60,7 +60,7 @@ index c9c2dd24e..ec1d23e3b 100644
          Policy {
              blocks_per_batch: 60,
 -            batches_per_epoch: 720,
-+            batches_per_epoch: 4,
++            batches_per_epoch: 8,
              state_chunks_max_size: 1000,
 -            transaction_validity_window: 120,
 +            transaction_validity_window: 2,
