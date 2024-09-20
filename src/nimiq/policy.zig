@@ -15,6 +15,17 @@ pub const collection_size = policy.collection_size;
 pub const collections_per_epoch = policy.collections_per_epoch;
 pub const network_id: u8 = policy.network_id;
 
+// This is to verify the policy values are correct.
+// considering we can compile different constants based on Dpolicy flag
+// we cannot cover this during unit tests alone.
+comptime {
+    if (std.debug.runtime_safety) {
+        std.debug.assert(collection_batches * batch_size == collection_size);
+        std.debug.assert(collection_size * collections_per_epoch == epoch_size);
+        std.debug.assert(batch_size * batches_per_epoch == epoch_size);
+    }
+}
+
 /// Returns the block number for the given batch number
 pub fn getBlockNumberForBatch(batch_number: u32) u32 {
     return batch_number * batch_size + genesis_number;
