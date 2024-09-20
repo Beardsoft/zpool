@@ -200,7 +200,7 @@ pub const Process = struct {
 
     // this will check all pending transactions, and mark them completed if the
     // transaction is mined, a new macro block has passed and the execution result is true
-    // one a transaction is considered completed, all corresponding payslips for that transaction
+    // Once a transaction is considered completed, all corresponding payslips for that transaction
     // will be marked completed as well.
     fn checkTransactionConfirmations(self: *Self) !void {
         var pending_txs = try querier.transactions.getTransactionHashesAwaitingConfirmation(self.sqlite_conn, self.allocator);
@@ -235,6 +235,8 @@ pub const Process = struct {
         }
     }
 
+    // this checks whether all payments for a given epoch are completed. If so
+    // the epoch is marked completed in the database.
     fn checkFinalizedEpochs(self: *Self) !void {
         const payment_details = try querier.epochs.getPaymentsCompletedByInProgress(self.sqlite_conn, self.allocator);
         defer self.allocator.free(payment_details);
