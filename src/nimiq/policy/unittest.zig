@@ -4,4 +4,5 @@ pub const epoch_size = 43200;
 pub const batches_per_epoch = 720;
 pub const collection_batches = 240;
 pub const collection_size = 14400;
+pub const collections_per_epoch = 3;
 pub const network_id = 7;

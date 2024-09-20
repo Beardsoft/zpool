@@ -12,6 +12,7 @@ pub const epoch_size = policy.epoch_size;
 pub const batches_per_epoch = policy.batches_per_epoch;
 pub const collection_batches = policy.collection_batches;
 pub const collection_size = policy.collection_size;
+pub const collections_per_epoch = policy.collections_per_epoch;
 pub const network_id: u8 = policy.network_id;
 
 /// Returns the block number for the given batch number

@@ -69,6 +69,7 @@ pub const Process = struct {
                 scheduled_task_tracker.reset();
 
                 try self.checkTransactionConfirmations();
+                try self.checkFinalizedEpochs();
                 try self.executePendingPayments();
             }
 
@@ -233,6 +234,18 @@ pub const Process = struct {
             std.log.info("tx with hash {s} is confirmed", .{pending_tx_hash});
             try querier.transactions.setStatus(self.sqlite_conn, pending_tx_hash, querier.statuses.Status.Completed);
             try querier.payslips.finalize(self.sqlite_conn, pending_tx_hash);
+        }
+    }
+
+    fn checkFinalizedEpochs(self: *Self) !void {
+        const payment_details = try querier.epochs.getPaymentsCompletedByInProgress(self.sqlite_conn, self.allocator);
+        defer self.allocator.free(payment_details);
+
+        for (payment_details) |summary| {
+            if ((summary.num_stakers * policy.collections_per_epoch) != summary.number_of_payments) continue;
+
+            std.log.info("All payments for epoch {d} completed", .{summary.epoch_number});
+            try querier.epochs.setStatus(self.sqlite_conn, summary.epoch_number, querier.statuses.Status.Completed);
         }
     }
 };
