@@ -2,7 +2,7 @@
 
 1. Watch for block progression. 
    * When an election block approaches, goto A
-   * When a checkpoint block passes, goto B
+   * When a macro block passes, goto B
 2. Payout rewards, goto C
 
 ## A - Election block
@@ -44,10 +44,10 @@ When an election block approaches we want to retrieve the validator state for th
 4. If `numStakers` is higher than `0` call `getStakersByValidatorAddress` for your validator. This should return an array of stakers that have delegated stake to your validator.
 5. For each staker, calculate their stake percentage based of their `balance` compared to the total balance returned for the validator. Store this information.
 
-## B - checkpoint block
-A checkpoint block denotes finality on the chain. With each checkpoint block rewards are paid out to active validators. Important catch is that rewards always reflect the previous batch, not the current batch. That means that the last rewards for for example epoch 3 are paid out in the first batch of epoch 4.
+## B - macro block
+A macro block denotes finality on the chain. With each macro block rewards are paid out to active validators. Important catch is that rewards always reflect the previous batch, not the current batch. That means that the last rewards for for example epoch 3 are paid out in the first batch of epoch 4.
 
-For each checkpoint block in an epoch you want to get the rewards paid out to your validator reward address. You can do this by calling `getInherentsByBlockNumber` RPC call. You can do this once every epoch, for each batch or at any other interval. 
+For each macro block in an epoch you want to get the rewards paid out to your validator reward address. You can do this by calling `getInherentsByBlockNumber` RPC call. You can do this once every epoch, for each batch or at any other interval. 
 
 *Example:*
 
