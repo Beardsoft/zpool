@@ -73,7 +73,9 @@ const migration_version_0 =
     \\    (6, "COMPLETED"),
     \\    (7, "PENDING"),
     \\    (8, "OUT_FOR_PAYMENT"),
-    \\    (9, "AWAITING_CONFIRMATION");
+    \\    (9, "AWAITING_CONFIRMATION"),
+    \\    (10, "JAILED"),
+    \\    (11, "FAILED");
     \\
     \\CREATE TABLE IF NOT EXISTS epochs(
     \\    number INTEGER NOT NULL PRIMARY KEY,

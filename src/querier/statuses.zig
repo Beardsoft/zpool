@@ -14,6 +14,8 @@ pub const Status = enum(u8) {
     Pending,
     OutForPayment,
     AwaitingConfirmation,
+    Jailed,
+    Failed,
 
     pub fn isInvalid(self: Self) bool {
         return (self == Status.NotElected or self == Status.NoStakers or self == Status.Retired or self == Status.InActive or self == Status.Error);

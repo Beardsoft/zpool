@@ -129,7 +129,7 @@ fn getSchemaStatusFromValidatorStatus(status: types.ValidatorStatus) querier.sta
     return switch (status) {
         types.ValidatorStatus.Inactive => querier.statuses.Status.InActive,
         types.ValidatorStatus.Retired => querier.statuses.Status.Retired,
-        types.ValidatorStatus.Jailed => querier.statuses.Status.InActive, // TODO: have a separate type for this
+        types.ValidatorStatus.Jailed => querier.statuses.Status.Jailed,
         types.ValidatorStatus.Active => querier.statuses.Status.InProgress,
     };
 }
