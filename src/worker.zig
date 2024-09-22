@@ -175,7 +175,7 @@ pub const Process = struct {
     // do a payout once a minimum payout amount is reached. All transactions are tracked
     // as pending until they are confirmed.
     fn executePendingPayments(self: *Self) !void {
-        try querier.payslips.setElligableToOutForPayment(self.sqlite_conn);
+        try querier.payslips.setElligableToOutForPayment(self.sqlite_conn, self.cfg.min_payout_luna);
         var pending_payments = try querier.payslips.getOutForPayment(self.sqlite_conn, self.allocator);
         defer pending_payments.deinit();
 

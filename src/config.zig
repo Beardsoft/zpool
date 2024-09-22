@@ -18,6 +18,7 @@ pub const Config = struct {
     reward_address: Address,
     reward_address_key_pair: Ed25519.KeyPair = undefined,
     pool_fee_percentage: u64 = 5,
+    min_payout_luna: u64 = 1000000,
 };
 
 pub const ConfigToml = struct {
@@ -33,9 +34,12 @@ pub const ConfigToml = struct {
         reward_secret_key: []const u8,
     },
 
-    pool: struct {
-        fee_percentage: u64,
-    } = .{ .fee_percentage = 5 },
+    pool: PoolConfig = PoolConfig{},
+};
+
+const PoolConfig = struct {
+    fee_percentage: u64 = 5,
+    min_payout_luna: u64 = 1000000, // 10 NIM
 };
 
 pub const ConfigError = error{
@@ -65,6 +69,7 @@ pub fn load(allocator: Allocator) !ArenaWrapped(Config) {
         .validator_address = try Allocator.dupe(arena_allocator, u8, result.value.validator.address),
         .reward_address = reward_address,
         .pool_fee_percentage = result.value.pool.fee_percentage,
+        .min_payout_luna = result.value.pool.min_payout_luna,
     };
 
     var private_key_raw = try allocator.alloc(u8, result.value.validator.reward_secret_key.len / 2);

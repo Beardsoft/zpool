@@ -9,10 +9,8 @@ pub fn insertNewPayslip(conn: *sqlite.Conn, collection_number: u32, address: []u
     try conn.exec("INSERT INTO payslips(collection_number, address, amount, status_id) VALUES(?1, ?2, ?3, ?4);", .{ collection_number, address, amount, @intFromEnum(status) });
 }
 
-pub fn setElligableToOutForPayment(conn: *sqlite.Conn) !void {
-    // TODO: the min payout of 10 NIM should be configurable
-    const min_payout_amount = 10 * 100000;
-    try conn.exec("UPDATE payslips SET status_id = ?1 WHERE status_id = ?2 AND address in (SELECT address FROM payslips WHERE status_id = ?3 GROUP BY address HAVING sum(amount) > ?4);", .{ @intFromEnum(Status.OutForPayment), @intFromEnum(Status.Pending), @intFromEnum(Status.Pending), min_payout_amount });
+pub fn setElligableToOutForPayment(conn: *sqlite.Conn, min_payout_luna: u64) !void {
+    try conn.exec("UPDATE payslips SET status_id = ?1 WHERE status_id = ?2 AND address in (SELECT address FROM payslips WHERE status_id = ?3 GROUP BY address HAVING sum(amount) > ?4);", .{ @intFromEnum(Status.OutForPayment), @intFromEnum(Status.Pending), @intFromEnum(Status.Pending), min_payout_luna });
 }
 
 pub const GetOutForPaymentRow = struct {
