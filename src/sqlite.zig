@@ -56,7 +56,11 @@ pub const Conn = struct {
         return .{ .conn = conn.? };
     }
 
-    pub fn close(self: Conn) !void {
+    pub fn close(self: Conn) void {
+        _ = c.sqlite3_close_v2(self.conn);
+    }
+
+    pub fn tryClose(self: Conn) !void {
         const rc = c.sqlite3_close_v2(self.conn);
         if (rc != c.SQLITE_OK) {
             return errorFromCode(rc);

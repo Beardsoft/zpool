@@ -40,6 +40,8 @@ pub fn run(args: Args) !void {
     var jsonrpc_client = jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
 
     var sqlite_conn = try sqlite.open(args.cfg.sqlite_db_path);
+    defer sqlite_conn.close();
+
     var worker_process = Process{ .cfg = args.cfg, .queue = args.queue, .sqlite_conn = &sqlite_conn, .client = &jsonrpc_client, .allocator = allocator };
     try worker_process.run();
 }

@@ -48,7 +48,7 @@ pub fn main() !void {
     var jsonrpc_client = nimiq.jsonrpc.Client{ .allocator = allocator, .client = &client, .uri = uri };
 
     var sqlite_conn = try sqlite.open(cfg.sqlite_db_path);
-    // TODO defer close here
+    defer sqlite_conn.close();
 
     querier.migrations.execute(&sqlite_conn) catch |err| {
         std.log.err("executing migration failed: {}", .{err});
