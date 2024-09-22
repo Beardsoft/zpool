@@ -224,10 +224,9 @@ pub const Process = struct {
             }
 
             if (!transaction.executionResult) {
-                std.log.warn("tx with hash {s} failed", .{pending_tx_hash});
-                // TODO
-                // this failed so has to be retried. Update state so this transaction will be retried
-                // during a next iteration.
+                std.log.warn("tx with hash {s} failed. Associated payslips will be retried.", .{pending_tx_hash});
+                try querier.transactions.setStatus(self.sqlite_conn, pending_tx_hash, querier.statuses.Status.Failed);
+                try querier.payslips.resetToPending(self.sqlite_conn, pending_tx_hash);
                 continue;
             }
 
