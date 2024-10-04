@@ -14,6 +14,7 @@ pub const collection_batches = policy.collection_batches;
 pub const collection_size = policy.collection_size;
 pub const collections_per_epoch = policy.collections_per_epoch;
 pub const network_id: u8 = policy.network_id;
+pub const jail_period = epoch_size * 8;
 
 // This is to verify the policy values are correct.
 // considering we can compile different constants based on Dpolicy flag
@@ -118,7 +119,7 @@ test "get collection from block number" {
     try testing.expect(getCollectionFromBlockNumber(60) == 0);
     try testing.expect(getCollectionFromBlockNumber(120) == 1);
     try testing.expect(getFirstBatchFromCollection(1) == 2);
-    try testing.expect(getFirstBatchFromCollection(2) == 242);
+    try testing.expect(getFirstBatchFromCollection(2) == 62);
 }
 
 test "block types by block number" {

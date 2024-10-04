@@ -692,7 +692,7 @@ pub fn isUnique(err: Error) bool {
 
 test "exec and scan" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
 
     conn.exec(
         \\
@@ -726,7 +726,7 @@ test "exec and scan" {
 
 test "bind null" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
 
     conn.exec(
         \\
@@ -745,7 +745,7 @@ test "bind null" {
 
 test "bind null optionals" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
 
     const empty = TestRow{};
 
@@ -766,7 +766,7 @@ test "bind null optionals" {
 
 test "boolean" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
 
     {
         conn.exec("insert into test (cint, cintn) values (?, ?)", .{ true, true }) catch unreachable;
@@ -797,7 +797,7 @@ test "boolean" {
 
 test "blob/text" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
 
     {
         const d1 = [_]u8{ 5, 1, 2, 3 };
@@ -821,7 +821,7 @@ test "blob/text" {
 
 test "explicit blob type" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
 
     {
         const d1 = [_]u8{ 0, 1, 2, 3 };
@@ -843,7 +843,7 @@ test "explicit blob type" {
 
 test "empty string/blob" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
 
     conn.exec(
         \\ insert into test (ctext, ctextn, cblob, cblobn) values
@@ -860,7 +860,7 @@ test "empty string/blob" {
 
 test "transaction commit" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
 
     var id1: i64 = 0;
     var id2: i64 = 0;
@@ -888,7 +888,7 @@ test "transaction commit" {
 
 test "transaction rollback" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
 
     var id1: i64 = 0;
     var id2: i64 = 0;
@@ -911,7 +911,7 @@ test "transaction rollback" {
 
 test "rows" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
 
     conn.exec(
         \\
@@ -937,27 +937,27 @@ test "rows" {
 
 test "row query error" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
     try t.expectError(error.Error, conn.row("select invalid from test", .{}));
     try t.expectEqualStrings("no such column: invalid", std.mem.span(conn.lastError()));
 }
 
 test "rows query error" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
     try t.expectError(error.Error, conn.rows("select invalid from test", .{}));
     try t.expectEqualStrings("no such column: invalid", std.mem.span(conn.lastError()));
 }
 
 test "lastError without error" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
     try t.expectEqualStrings("not an error", std.mem.span(conn.lastError()));
 }
 
 test "isUnique" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
 
     conn.execNoArgs("insert into test (uniq) values (1)") catch unreachable;
 
@@ -970,7 +970,7 @@ test "isUnique" {
 
 test "statement meta" {
     const conn = testDB();
-    defer conn.close() catch unreachable;
+    defer conn.tryClose() catch unreachable;
 
     const row = conn.row("select 1 as id, 'leto' as name, null as other", .{}) catch unreachable orelse unreachable;
     defer row.deinit();

@@ -140,13 +140,13 @@ pub const Validator = struct {
         if (self.retired) return ValidatorStatus.Retired;
 
         if (self.inactivityFlag) |height| {
-            if (height > current_height) {
+            if (height <= current_height) {
                 return ValidatorStatus.Inactive;
             }
         }
 
         if (self.jailedFrom) |height| {
-            if (height > current_height) {
+            if ((height + policy.jail_period) > current_height) {
                 return ValidatorStatus.Jailed;
             }
         }
@@ -154,3 +154,18 @@ pub const Validator = struct {
         return ValidatorStatus.Active;
     }
 };
+
+test "validator is inactive" {
+    const validator = Validator{ .address = undefined, .rewardAddress = undefined, .balance = 1000000000, .numStakers = 0, .retired = false, .inactivityFlag = 43200 };
+    try testing.expect(validator.getStatus(43200) == ValidatorStatus.Inactive);
+}
+
+test "validator is jailed" {
+    const validator = Validator{ .address = undefined, .rewardAddress = undefined, .balance = 1000000000, .numStakers = 0, .retired = false, .jailedFrom = 43200 };
+    try testing.expect(validator.getStatus(43200) == ValidatorStatus.Jailed);
+}
+
+test "validator is active after being jailed before" {
+    const validator = Validator{ .address = undefined, .rewardAddress = undefined, .balance = 1000000000, .numStakers = 0, .retired = false, .jailedFrom = 43200 };
+    try testing.expect(validator.getStatus(432000) == ValidatorStatus.Active);
+}
