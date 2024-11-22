@@ -61,7 +61,6 @@ function build_albatross() {
 }
 
 function up_albatross() {
-    docker volume ls | grep -v "VOLUME" | awk '{print $2}' | while read volume; do docker volume rm $volume; done
     docker compose -f ./docker-compose.yaml up -d 
 }
 

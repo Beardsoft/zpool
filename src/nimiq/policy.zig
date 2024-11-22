@@ -48,7 +48,7 @@ pub fn getCollectionFromBlockNumber(block_number: u32) u32 {
     return calculateSizeForBlock(block_number - batch_size, collection_size);
 }
 
-/// Returns the collection number for he given batch number
+/// Returns the collection number for the given batch number
 pub fn getCollectionFromBatchNumber(batch_number: u32) u32 {
     return getCollectionFromBlockNumber(getBlockNumberForBatch(batch_number));
 }

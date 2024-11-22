@@ -1,5 +1,5 @@
 # zpool
-zpool is an open source Proof of Stake pool for the Nimiq blockchain.
+zpool is an open source Proof of Stake pool for the Nimiq blockchain meant to serve as an example / refernce implementation for other pool operators.
 
 ## Status
 The pool is meant to be a reference implementation. The core functionality works and has run on devnet and testnet. Pool has not been tested thoroughly, so there might be problems or issues that are currently not handled yet. The pool might be optimized for mainnet in the future if there is interest.
@@ -21,8 +21,10 @@ By making the pool open source, we hope to contribute to the Nimiq eco system as
 
 ## Features it will not provide
 * will not provide a frontend
+* does not support genesis validators. Considering mainnet is already launched, this is no longer relevant.
+* pool fee is not paid out to the operator automatically. The pool fee is deducted though, and the amount is stored in the database.
 
 ## Documentation
 Please see the [doc](/doc/) folder for documentation on the pool.
-1. [How to run zpool](/doc/how-to-run.md)
+1. [How to run zpool on devnet](/doc/how-to-run-devnet.md)
 2. [Building your own pool](/doc/DESIGN.md)

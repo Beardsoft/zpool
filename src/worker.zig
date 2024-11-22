@@ -183,6 +183,11 @@ pub const Process = struct {
             var recipient_address = Address{};
             try recipient_address.parseAddressFromFriendly(pending_payment.address);
 
+            // TODO:
+            // this assumes the staker is still a staker, but this is not necessarily true.
+            // ideally we should validate the staker is still a staker, if so we can pay out as stake
+            // in other cases we should fall back to a basic transaction
+
             var tx_builder = try Builder.newAddStake(self.allocator, self.cfg.reward_address, recipient_address, pending_payment.amount, cache.block_number_get());
             defer tx_builder.deinit();
             try tx_builder.setFeeByByteSize();
