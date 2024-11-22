@@ -13,8 +13,9 @@ When an election block approaches we want to retrieve the validator state for th
    * if `inctivityFlag` is not `null`  check that the block number is not higher than the current block height.
       * if the inactivityFlag is higher than the current height your validator is inactive
    * if `retired` is true, your validator is retired
-   * if `jailedFrom`  is not `null`  check that the block number is not higher than the current block height.
-      * if the jailedFrom is higher than the current height your validator is jailed
+   * if `jailedFrom`  is not `null`  check that the current block height is not lower than `jailedFrom + (8 * epoch_size)`.
+      * if the jailedFrom + the jail period is higher than the current height your validator is jailed.
+      * once your validator has been jailed before, `jailedFrom` will no longer be null but always have a block number.
 2. the `balance`  field is the validator stake. This includes both the validator balance and all delegated funds. The `numStakers` field indicates the amount of delegated stakers. See below for example.
 ```
 {

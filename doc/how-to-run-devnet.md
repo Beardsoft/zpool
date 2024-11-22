@@ -14,7 +14,7 @@ cd devlab
 ```
 ./run.sh sync
 ```
-3. Apply patches. Zpool uses an altered policy for devnet so that epochs only take 8 minutes. You have to apply the `/devlab/devnet-policy.path` on the `/devlab/albatross` folder. 
+3. Apply patches. Zpool uses an altered policy for devnet so that epochs only take 8 minutes. You have to apply the `/devlab/devnet-policy.patch` on the `/devlab/albatross` folder. 
 4. build albatross 
 ```
 ./run.sh build-albatross
