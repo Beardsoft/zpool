@@ -4,6 +4,7 @@ pub const PolicyNetwork = enum {
     Unittest,
     Testnet,
     Devnet,
+    Mainnet,
 };
 
 // Although this function looks imperative, note that its job is to
@@ -30,6 +31,7 @@ pub fn build(b: *std.Build) void {
         PolicyNetwork.Testnet => b.path("src/nimiq/policy/testnet.zig"),
         PolicyNetwork.Unittest => b.path("src/nimiq/policy/unittest.zig"),
         PolicyNetwork.Devnet => b.path("src/nimiq/policy/devnet.zig"),
+        PolicyNetwork.Mainnet => b.path("src/nimiq/policy/mainnet.zig"),
     };
 
     // modules

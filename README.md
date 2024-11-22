@@ -2,15 +2,13 @@
 zpool is an open source Proof of Stake pool for the Nimiq blockchain.
 
 ## Status
-The pool is currently in development and in an alpha phase. Most of the core functionality is working, but certain edge cases and errors are to be expected in this stage. Pool is currently being tested on testnet in preparation for mainnet running.
+The pool is meant to be a reference implementation. The core functionality works and has run on devnet and testnet. Pool has not been tested thoroughly, so there might be problems or issues that are currently not handled yet. The pool might be optimized for mainnet in the future if there is interest.
 
 ## Goal
 The goal of this project is to provide a simple PoS pool implementation as a starting point for pool operators. 
-zpool is small and simple to run, capable of handling a maximum of 500 stakers. Proper handling of more stakers is not gauranteed.
 By making the pool open source, we hope to contribute to the Nimiq eco system as a whole providing other pool operators a blue print for their own implementations.
 
 ## Features
-* is easy to run
 * keeps track of validator election
 * keeps track of delegated stakers per epoch
 * keeps track of validator rewards
