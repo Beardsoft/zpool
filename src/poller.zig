@@ -71,7 +71,12 @@ fn handleNewHeight(self: *Self, height: u32) !void {
             std.log.info("Election block passed. Block number {d}. Batch number {d}", .{ height, policy.getBatchFromBlockNumber(height) });
             try self.fetchValidatorDetails(height);
         },
-        BlockType.Micro => {}, // TODO: handle last micro block of an epoch,
+        BlockType.Micro => {
+            if (policy.getBlockTypeByBlockNumber(height + 1) == BlockType.Election) {
+                std.log.info("last micro block for epoch passed. Block number {d}", .{height});
+                try self.fetchValidatorDetails(height);
+            }
+        },
     }
 }
 
@@ -120,7 +125,7 @@ fn fetchValidatorDetails(self: *Self, current_height: u32) !void {
         return;
     }
 
-    std.log.info("Validator is elected. Balance {d}. Num stakers: {d}", .{ validator.balance, validator.numStakers });
+    std.log.info("Validator is elected for epoch {d}. Balance {d}. Num stakers: {d}", .{ next_epoch_number, validator.balance, validator.numStakers });
     try querier.epochs.insertNewEpoch(self.sqlite_conn, next_epoch_number, validator.numStakers, validator.balance, querier.statuses.Status.InProgress);
     try self.fetchValidatorStakers(validator.balance, next_epoch_number);
 }
